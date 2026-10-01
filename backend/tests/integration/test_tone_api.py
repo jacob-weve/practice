@@ -293,3 +293,24 @@ async def test_analyze(client: httpx.AsyncClient, make_user: MakeUser) -> None:
     body = res.json()
     assert body["emotion"]["zone"] == "danger"
     assert [f["text"] for f in body["red_flags"]] == ["그걸 왜 지금 말해요"]
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({}, "Speech level: high — use Korean 하십시오체"),  # 상사 → 자동으로 높임
+        ({"relation": "friend"}, "Speech level: low — use Korean 반말"),
+        ({"relation": "friend", "formality": "high"}, "Speech level: high"),
+        ({"target_lang": "ja", "relation": "work_peer"}, "Japanese 丁寧語"),
+    ],
+)
+async def test_speech_level_follows_language_relation_and_formality(
+    client: httpx.AsyncClient,
+    make_user: MakeUser,
+    llm: FakeLlmProvider,
+    overrides: dict[str, str],
+    expected: str,
+) -> None:
+    _, auth = await make_user()
+    await client.post("/api/v1/tone/transform", json={**BODY, **overrides}, headers=auth)
+    assert expected in calls_for(llm, "message coach")[0].call.user

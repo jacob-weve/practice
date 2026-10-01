@@ -37,6 +37,7 @@ from app.llm.schemas import (
 )
 from app.llm.streaming import FieldCompleted, IncrementalObjectParser, ItemCompleted
 from app.privacy.log_writer import LogEntry, TransformationLogWriter
+from app.tone.formality import style_instruction
 from app.tone.schemas import (
     CONTEXT_LIMIT,
     DRAFT_LIMIT,
@@ -155,7 +156,13 @@ class ToneService:
         )
         options = data_block(
             "options",
-            f"Persona instructions: {directive}\nEmoji usage: {req.options.emoji}.",
+            "\n".join(
+                [
+                    f"Persona instructions: {directive}",
+                    style_instruction(req.target_lang, req.formality, req.relation),
+                    f"Emoji usage: {req.options.emoji}.",
+                ]
+            ),
             persona=req.persona,
             relation=req.relation or "unspecified",
             target_lang=req.target_lang,
