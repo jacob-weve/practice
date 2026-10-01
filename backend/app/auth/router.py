@@ -10,6 +10,8 @@ from app.auth.schemas import (
     CHALLENGE_PATTERN,
     AuthorizeResponse,
     AuthTokenResponse,
+    ConsentListResponse,
+    ConsentState,
     ConsentSubmitRequest,
     LogoutRequest,
     RefreshRequest,
@@ -168,6 +170,17 @@ async def logout(
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     _clear_refresh_cookie(response, settings)
     return response
+
+
+@router.get("/consents", response_model=ConsentListResponse)
+async def list_consents(user: CurrentUser, service: AuthServiceDep) -> ConsentListResponse:
+    latest = await service.latest_consents(user.id)
+    return ConsentListResponse(
+        consents=[
+            ConsentState(type=row.consent_type, version=row.version, agreed=row.agreed)
+            for row in latest.values()
+        ]
+    )
 
 
 @router.post("/consents", response_model=UserResponse)

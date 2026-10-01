@@ -15,6 +15,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.db.session import create_engine, create_sessionmaker
+from app.feedback.router import router as feedback_router
 from app.llm.client import AnthropicProvider, CircuitBreaker, LlmClient, LlmProvider
 from app.privacy.log_writer import TransformationLogWriter
 from app.reply.router import router as reply_router
@@ -88,6 +89,7 @@ def create_app(
     api.include_router(users_router)
     api.include_router(tone_router)
     api.include_router(reply_router)
+    api.include_router(feedback_router)
     app.include_router(api)
     return app
 

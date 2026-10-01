@@ -1,0 +1,12 @@
+{
+  "title": "설정",
+  "uiLanguage": "화면 언어",
+  "targetLanguage": "기본 결과 언어",
+  "qualityLog": "품질 개선을 위한 익명 로그",
+  "qualityLogHelp": "켜면 이름·전화번호 등을 가린 뒤 90일간 보관해요. 끄면 통계 수치만 남아요.",
+  "linkedAccounts": "연결된 계정",
+  "privateEmail": "Apple 이메일 가리기",
+  "logout": "로그아웃",
+  "delete": "회원 탈퇴",
+  "confirmDelete": "탈퇴하면 계정과 데이터가 바로 삭제되고 되돌릴 수 없어요. 계속할까요?"
+}

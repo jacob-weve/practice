@@ -17,7 +17,7 @@ interface ErrorEnvelope {
   error?: { code?: string; message?: string; request_id?: string };
 }
 
-async function toApiError(res: Response): Promise<ApiError> {
+export async function toApiError(res: Response): Promise<ApiError> {
   let body: ErrorEnvelope = {};
   try {
     body = (await res.json()) as ErrorEnvelope;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ConsentDecision } from "@/lib/auth/login-flow";
-import type { ConsentType, RequiredConsent } from "@/lib/auth/types";
+import type { ConsentType, RequiredConsent } from "@/lib/api/types";
 
 const OPTIONAL: ConsentType[] = ["marketing", "quality_log_collection"];
 
@@ -37,7 +37,7 @@ export function ConsentModal({ required, submitting, onSubmit }: Props) {
       aria-labelledby="consent-title"
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
     >
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-6 dark:bg-neutral-900 sm:rounded-2xl">
+      <div className="w-full max-w-md rounded-t-2xl bg-white p-6 sm:rounded-2xl dark:bg-neutral-900">
         <h2 id="consent-title" className="text-xl font-bold">
           {t("title")}
         </h2>

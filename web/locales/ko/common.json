@@ -5,5 +5,13 @@
   "logout": "로그아웃",
   "greeting": "{name}님, 반가워요!",
   "guest": "사용자",
-  "goLogin": "로그인하러 가기"
+  "goLogin": "로그인하러 가기",
+  "copy": "복사",
+  "copied": "복사됨",
+  "share": "공유",
+  "languages": {
+    "ko": "한국어",
+    "en": "Korean",
+    "ja": "韓国語"
+  }
 }

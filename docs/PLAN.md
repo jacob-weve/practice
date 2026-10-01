@@ -151,25 +151,28 @@
 
 ## Step 7. 프론트엔드 핵심 화면
 
-- [ ] 레이아웃, 네비게이션, 테마(라이트/다크)
-- [ ] `ContextInput` (텍스트) + 스크린샷 업로드 → **온디바이스 OCR**(Tesseract.js) 프로토타입
-- [ ] `DraftEditor` + 독소 하이라이트 오버레이(오프셋 기반)
-- [ ] `PersonaSelector`, `RelationSelector`, `LanguageSelector`
-- [ ] SSE 클라이언트(`fetch` + `ReadableStream`), 이벤트별 점진 렌더링
-- [ ] `EmotionThermometer` (0–100°C 게이지, 변환 전후 비교, 구간 색상)
-- [ ] `VariantCard` ×3 (복사/공유 → `/feedback`)
-- [ ] 답장 해석기 화면(해석 카드, 가이드, 추천 답장)
-- [ ] 히스토리(IndexedDB, 최대 500건, 전체 삭제)
-- [ ] 설정(언어, 품질 로그 동의 토글, 연결 계정, 로그아웃, 탈퇴)
-- [ ] 에러 코드별 사용자 메시지 및 재시도 UX
+- [x] 레이아웃, 네비게이션, 테마(시스템 설정 따라 라이트/다크)
+- [x] 상대 메시지 입력 + 스크린샷 업로드 → **온디바이스 OCR**(Tesseract.js, 처음 쓸 때만 로드) 프로토타입
+- [ ] 실제 메신저 스크린샷으로 OCR 품질 확인(말풍선 화자 구분은 미지원)
+- [x] 독소 하이라이트(`RedFlagPreview`, 오프셋 기반) + 표현별 대체 문구 '바꾸기'
+- [x] `PersonaSelector`, `RelationSelector`, `LanguageSelector`
+- [x] SSE 클라이언트(`lib/sse.ts`, `fetch` + `ReadableStream`), 이벤트별 점진 렌더링
+- [x] `EmotionThermometer` (0–100°C 게이지, 결과 카드에 올리면 변환 후 온도 표시, 구간 색상)
+- [x] `VariantCard` ×3 (복사/공유 → `POST /feedback`)
+- [x] 답장 해석기 화면(해석 카드, 가이드, 추천 답장)
+- [x] 히스토리(IndexedDB, 최대 500건, 고정 항목은 보존, 전체 삭제)
+- [x] 설정(화면·결과 언어, 품질 로그 동의 토글, 연결 계정 표시, 로그아웃, 탈퇴)
+- [ ] 설정에서 다른 소셜 계정 추가 연결 UI (API `/auth/link/{provider}`는 구현됨)
+- [x] 에러 코드별 사용자 메시지(`ErrorNotice`)
+- [ ] 실제 브라우저에서 전체 흐름 수동 점검 (OAuth 앱 등록 후)
 
 ---
 
 ## Step 8. 다국어 (i18n)
 
-- [ ] `locales/{ko,en,ja}/{common,auth,tone,errors}.json` 구성
-- [ ] 백엔드 `Accept-Language` 협상과 에러 메시지 번역
-- [ ] UI 언어와 변환 출력 언어 분리 설정
+- [x] `locales/{ko,en,ja}/{common,auth,errors,nav,tone,interpret,history,settings}.json` 구성 (백엔드·웹 에러 카탈로그 동기화 테스트 포함)
+- [x] 백엔드 `Accept-Language` 협상과 에러 메시지 번역 (SSE `error` 이벤트 포함)
+- [x] UI 언어와 변환 출력 언어 분리 설정
 - [ ] 언어별 존댓말 매핑(`ko: haeyo/hapsyo/banmal`, `ja`, `en`) 프롬프트 반영
 - [ ] 교차 언어 변환 골든셋(en→ko, ko→ja 등) 10건 평가
 - [ ] 하드코딩 문자열 검출 lint 규칙 적용

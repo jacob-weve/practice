@@ -1,0 +1,71 @@
+{
+  "context": "相手のメッセージ（任意）",
+  "contextPlaceholder": "受け取ったメッセージを貼り付けるか、スクリーンショットをアップロード",
+  "draft": "返信の下書き",
+  "draftPlaceholder": "送ろうとしていた返信を書いてください",
+  "persona": "トーン",
+  "relation": "相手との関係",
+  "targetLang": "出力言語",
+  "submit": "やわらかくする",
+  "working": "調整中…",
+  "cancel": "キャンセル",
+  "variant": {
+    "primary": "おすすめ",
+    "softer": "よりやわらかく",
+    "concise": "簡潔に"
+  },
+  "relations": {
+    "work_superior": "上司",
+    "work_peer": "同僚",
+    "client": "取引先",
+    "partner": "恋人",
+    "family": "家族",
+    "friend": "友人",
+    "acquaintance": "知人"
+  },
+  "thermometer": {
+    "label": "感情温度",
+    "zone": {
+      "cold": "冷たい",
+      "calm": "適温",
+      "warning": "注意",
+      "danger": "危険"
+    },
+    "emotion": {
+      "anger": "怒り",
+      "frustration": "苛立ち",
+      "sadness": "悲しみ",
+      "anxiety": "不安",
+      "joy": "喜び",
+      "affection": "愛情",
+      "neutral": "中立",
+      "indifference": "無関心"
+    }
+  },
+  "redFlags": {
+    "title": "誤解を招きそうな表現",
+    "none": "気になる表現はありません。",
+    "apply": "置き換え",
+    "type": {
+      "sarcasm": "皮肉",
+      "blame": "責め",
+      "command": "命令口調",
+      "passive_aggressive": "遠回しな攻撃",
+      "belittling": "見下し",
+      "absolute": "断定",
+      "ambiguous": "曖昧",
+      "cold": "冷たい"
+    },
+    "severity": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    }
+  },
+  "ocr": {
+    "button": "スクショから読み取り",
+    "working": "読み取り中…",
+    "failed": "文字を読み取れませんでした。",
+    "privacy": "画像は端末内でのみ処理されます"
+  }
+}

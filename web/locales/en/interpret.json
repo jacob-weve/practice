@@ -1,0 +1,21 @@
+{
+  "message": "Message you received",
+  "messagePlaceholder": "e.g. k",
+  "conversation": "Earlier conversation (optional)",
+  "conversationPlaceholder": "me: Movie tonight?\nthem: k",
+  "mePrefixes": "me,나",
+  "concern": "What worries you? (optional)",
+  "concernPlaceholder": "e.g. Are they upset?",
+  "submit": "Interpret",
+  "working": "Reading…",
+  "interpretations": "Possible readings",
+  "guide": "An objective take",
+  "overthinking": "You may be overthinking this one.",
+  "avoid": "Avoid",
+  "checkPoints": "Worth checking",
+  "style": {
+    "confirm": "Check in",
+    "empathize": "Empathize",
+    "light_shift": "Lighten up"
+  }
+}

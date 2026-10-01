@@ -1,0 +1,16 @@
+{
+  "title": "履歴",
+  "localOnly": "履歴はこの端末にのみ保存され、サーバーには残りません。",
+  "empty": "まだ記録がありません。",
+  "unavailable": "このブラウザでは履歴を保存できません。",
+  "clear": "すべて削除",
+  "confirmClear": "履歴をすべて削除しますか？",
+  "pin": "固定",
+  "unpin": "固定解除",
+  "delete": "削除",
+  "copy": "結果をコピー",
+  "kind": {
+    "tone_transform": "言い換え",
+    "reply_interpret": "返信の解釈"
+  }
+}

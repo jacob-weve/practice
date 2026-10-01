@@ -1,0 +1,71 @@
+{
+  "context": "상대방 메시지 (선택)",
+  "contextPlaceholder": "받은 메시지를 붙여넣거나 스크린샷을 올려 주세요",
+  "draft": "내 답장 초안",
+  "draftPlaceholder": "보내려던 답장을 그대로 적어 주세요",
+  "persona": "말투",
+  "relation": "상대와의 관계",
+  "targetLang": "결과 언어",
+  "submit": "말랑하게 바꾸기",
+  "working": "다듬는 중…",
+  "cancel": "취소",
+  "variant": {
+    "primary": "추천",
+    "softer": "더 부드럽게",
+    "concise": "간결하게"
+  },
+  "relations": {
+    "work_superior": "직장 상사",
+    "work_peer": "직장 동료",
+    "client": "거래처·고객",
+    "partner": "연인",
+    "family": "가족",
+    "friend": "친구",
+    "acquaintance": "지인"
+  },
+  "thermometer": {
+    "label": "감정 온도",
+    "zone": {
+      "cold": "차가움",
+      "calm": "적정",
+      "warning": "주의",
+      "danger": "위험"
+    },
+    "emotion": {
+      "anger": "분노",
+      "frustration": "답답함",
+      "sadness": "서운함",
+      "anxiety": "불안",
+      "joy": "기쁨",
+      "affection": "애정",
+      "neutral": "중립",
+      "indifference": "무관심"
+    }
+  },
+  "redFlags": {
+    "title": "오해를 부를 수 있는 표현",
+    "none": "눈에 띄는 표현이 없어요.",
+    "apply": "바꾸기",
+    "type": {
+      "sarcasm": "비꼼",
+      "blame": "탓하기",
+      "command": "명령조",
+      "passive_aggressive": "수동공격",
+      "belittling": "비하",
+      "absolute": "단정",
+      "ambiguous": "모호함",
+      "cold": "차가움"
+    },
+    "severity": {
+      "low": "낮음",
+      "medium": "보통",
+      "high": "높음"
+    }
+  },
+  "ocr": {
+    "button": "스크린샷에서 가져오기",
+    "working": "읽는 중…",
+    "failed": "글자를 읽지 못했어요.",
+    "privacy": "이미지는 기기에서만 처리돼요"
+  }
+}

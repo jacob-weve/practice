@@ -5,6 +5,7 @@ export const LOCALES = ["ko", "en", "ja"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "ko";
 export const LOCALE_COOKIE = "NEXT_LOCALE";
+const NAMESPACES = ["common", "auth", "errors", "nav", "tone", "interpret", "history", "settings"];
 
 function isLocale(value: string | undefined): value is Locale {
   return value !== undefined && (LOCALES as readonly string[]).includes(value);
@@ -27,13 +28,8 @@ export default getRequestConfig(async () => {
     ? cookieLocale
     : negotiateLocale((await headers()).get("accept-language"));
 
-  const [common, auth, errors] = await Promise.all([
-    import(`../locales/${locale}/common.json`),
-    import(`../locales/${locale}/auth.json`),
-    import(`../locales/${locale}/errors.json`),
-  ]);
-  return {
-    locale,
-    messages: { common: common.default, auth: auth.default, errors: errors.default },
-  };
+  const entries = await Promise.all(
+    NAMESPACES.map(async (ns) => [ns, (await import(`../locales/${locale}/${ns}.json`)).default]),
+  );
+  return { locale, messages: Object.fromEntries(entries) };
 });

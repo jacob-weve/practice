@@ -41,7 +41,15 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+        working-directory: backend
       - run: pnpm install --frozen-lockfile
+      - name: Generated API types are up to date
+        run: pnpm gen:api && git diff --exit-code lib/api
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { ConsentModal } from "@/components/ConsentModal";
 import { ApiError } from "@/lib/api/client";
 import { completeLogin, submitConsents, type ConsentDecision } from "@/lib/auth/login-flow";
-import type { RequiredConsent } from "@/lib/auth/types";
+import type { RequiredConsent } from "@/lib/api/types";
 import { isProvider } from "@/lib/config";
 
 export default function OAuthCallbackPage() {
@@ -32,7 +32,7 @@ export default function OAuthCallbackPage() {
     window.history.replaceState(null, "", window.location.pathname);
     completeLogin(provider, params)
       .then((res) => {
-        if (res.user.status === "pending_consent") setRequired(res.required_consents);
+        if (res.user.status === "pending_consent") setRequired(res.required_consents ?? []);
         else router.replace("/");
       })
       .catch((err: unknown) => {

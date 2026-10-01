@@ -5,5 +5,13 @@
   "logout": "Log out",
   "greeting": "Welcome, {name}!",
   "guest": "there",
-  "goLogin": "Go to login"
+  "goLogin": "Go to login",
+  "copy": "Copy",
+  "copied": "Copied",
+  "share": "Share",
+  "languages": {
+    "ko": "영어",
+    "en": "English",
+    "ja": "英語"
+  }
 }

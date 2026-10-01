@@ -1,0 +1,16 @@
+{
+  "title": "히스토리",
+  "localOnly": "히스토리는 이 기기에만 저장돼요. 서버에는 남지 않아요.",
+  "empty": "아직 기록이 없어요.",
+  "unavailable": "이 브라우저에서는 히스토리를 저장할 수 없어요.",
+  "clear": "전체 삭제",
+  "confirmClear": "히스토리를 모두 지울까요?",
+  "pin": "고정",
+  "unpin": "고정 해제",
+  "delete": "삭제",
+  "copy": "결과 복사",
+  "kind": {
+    "tone_transform": "말투 변환",
+    "reply_interpret": "답장 해석"
+  }
+}

@@ -5,5 +5,13 @@
   "logout": "ログアウト",
   "greeting": "{name}さん、ようこそ！",
   "guest": "ゲスト",
-  "goLogin": "ログインへ"
+  "goLogin": "ログインへ",
+  "copy": "コピー",
+  "copied": "コピーしました",
+  "share": "共有",
+  "languages": {
+    "ko": "일본어",
+    "en": "Japanese",
+    "ja": "日本語"
+  }
 }

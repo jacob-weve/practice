@@ -1,0 +1,71 @@
+{
+  "context": "Their message (optional)",
+  "contextPlaceholder": "Paste the message you received or upload a screenshot",
+  "draft": "Your draft reply",
+  "draftPlaceholder": "Write the reply you were going to send",
+  "persona": "Tone",
+  "relation": "Relationship",
+  "targetLang": "Output language",
+  "submit": "Soften it",
+  "working": "Rewriting…",
+  "cancel": "Cancel",
+  "variant": {
+    "primary": "Recommended",
+    "softer": "Softer",
+    "concise": "Concise"
+  },
+  "relations": {
+    "work_superior": "Manager",
+    "work_peer": "Coworker",
+    "client": "Client",
+    "partner": "Partner",
+    "family": "Family",
+    "friend": "Friend",
+    "acquaintance": "Acquaintance"
+  },
+  "thermometer": {
+    "label": "Emotional temperature",
+    "zone": {
+      "cold": "Cold",
+      "calm": "Calm",
+      "warning": "Warm",
+      "danger": "Hot"
+    },
+    "emotion": {
+      "anger": "Anger",
+      "frustration": "Frustration",
+      "sadness": "Sadness",
+      "anxiety": "Anxiety",
+      "joy": "Joy",
+      "affection": "Affection",
+      "neutral": "Neutral",
+      "indifference": "Indifference"
+    }
+  },
+  "redFlags": {
+    "title": "Phrases that may be misread",
+    "none": "Nothing stood out.",
+    "apply": "Apply",
+    "type": {
+      "sarcasm": "Sarcasm",
+      "blame": "Blame",
+      "command": "Commanding",
+      "passive_aggressive": "Passive-aggressive",
+      "belittling": "Belittling",
+      "absolute": "Absolute",
+      "ambiguous": "Ambiguous",
+      "cold": "Cold"
+    },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    }
+  },
+  "ocr": {
+    "button": "From screenshot",
+    "working": "Reading…",
+    "failed": "Couldn't read the text.",
+    "privacy": "Processed on your device only"
+  }
+}

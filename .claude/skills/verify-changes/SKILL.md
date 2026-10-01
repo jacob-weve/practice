@@ -31,7 +31,8 @@ uv run pytest --cov --cov-report=term
 
 ```bash
 cd web
-pnpm typecheck && pnpm lint && pnpm test
+pnpm gen:api            # 백엔드 API가 바뀌었으면 타입을 다시 만든다(lib/api/schema.d.ts)
+pnpm format && pnpm typecheck && pnpm lint && pnpm test
 NEXT_TELEMETRY_DISABLED=1 pnpm build   # 라우트·서버 컴포넌트 오류는 build에서만 드러난다
 ```
 

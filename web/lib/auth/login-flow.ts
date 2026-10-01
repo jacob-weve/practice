@@ -6,7 +6,7 @@ import {
   savePendingLogin,
   takePendingLogin,
 } from "@/lib/auth/pkce";
-import type { AuthTokenResponse, AuthorizeResponse, ConsentType } from "@/lib/auth/types";
+import type { AuthTokenResponse, AuthorizeResponse, ConsentType } from "@/lib/api/types";
 import { redirectUriFor, type Provider } from "@/lib/config";
 
 export async function startLogin(provider: Provider): Promise<void> {

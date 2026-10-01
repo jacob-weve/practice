@@ -105,3 +105,13 @@ class TokenRefreshResponse(StrictModel):
 
 class UserResponse(StrictModel):
     user: UserProfile
+
+
+class ConsentState(StrictModel):
+    type: ConsentType
+    version: str
+    agreed: bool
+
+
+class ConsentListResponse(StrictModel):
+    consents: list[ConsentState]

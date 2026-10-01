@@ -33,6 +33,12 @@ repos:
         language: system
         files: ^backend/.*\.py$
         pass_filenames: false
+      - id: web-format
+        name: web prettier
+        entry: bash -c 'cd web && pnpm format:check'
+        language: system
+        files: ^web/
+        pass_filenames: false
       - id: web-lint
         name: web lint
         entry: bash -c 'cd web && pnpm lint'

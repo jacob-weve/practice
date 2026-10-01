@@ -120,3 +120,31 @@ async def test_interpret_is_logged_with_kind(
     assert row.kind is TransformKind.REPLY_INTERPRET
     assert row.masked_draft == "ㅇㅇ"
     assert row.emotion_temperature == 40
+
+
+async def test_feedback_marks_selected_variant_only_for_owner(
+    client: httpx.AsyncClient, make_user: MakeUser, app: FastAPI
+) -> None:
+    _, owner = await make_user()
+    _, other = await make_user()
+    rid = {"X-Request-ID": "req-feedback-1"}
+    await client.post("/api/v1/reply/interpret", json=BODY, headers={**owner, **rid})
+
+    body = {"request_id": "req-feedback-1", "action": "copied", "variant_kind": "empathize"}
+    assert (await client.post("/api/v1/feedback", json=body, headers=other)).status_code == 204
+    async with app.state.sessionmaker() as session:
+        row = (await session.execute(select(TransformationLog))).scalar_one()
+        assert row.selected_variant is None
+
+    assert (await client.post("/api/v1/feedback", json=body, headers=owner)).status_code == 204
+    async with app.state.sessionmaker() as session:
+        row = (await session.execute(select(TransformationLog))).scalar_one()
+        assert row.selected_variant == "empathize"
+
+
+async def test_list_consents(client: httpx.AsyncClient, make_user: MakeUser) -> None:
+    _, auth = await make_user(quality_log=True)
+    res = await client.get("/api/v1/auth/consents", headers=auth)
+    assert res.json() == {
+        "consents": [{"type": "quality_log_collection", "version": "2026-10-01", "agreed": True}]
+    }
