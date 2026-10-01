@@ -79,6 +79,8 @@
 | 429 | `RATE_LIMITED` | 요청 한도 초과 (`Retry-After` 헤더) |
 | 502 | `LLM_UPSTREAM_ERROR` | LLM 제공사 오류(Fallback 실패) |
 | 502 | `LLM_OUTPUT_INVALID` | LLM 출력 스키마 검증 실패(재시도 후) |
+| 422 | `LLM_REFUSED` | 모델 안전 분류기가 거절(서버 측 대체 재시도 후에도) |
+| 503 | `LLM_BUSY` | 티어별 동시 호출 한도 초과 |
 | 503 | `AUTH_PROVIDER_UNAVAILABLE` | OAuth 제공자 장애 |
 | 500 | `INTERNAL_ERROR` | 처리되지 않은 서버 오류 |
 

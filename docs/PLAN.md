@@ -91,15 +91,17 @@
 
 ## Step 3. LLM 파이프라인 기반
 
-- [ ] 마이그레이션: `tone_options`, `prompt_templates`, `transformation_logs`
-- [ ] 시드: 페르소나 6종 × (ko, en, ja), 프롬프트 템플릿 v1 (`tone_transform`, `tone_analyze`, `reply_interpret`, `guardrail_classify`)
-- [ ] `llm/client.py`: Provider 추상화, async 스트리밍 호출, 타임아웃(TTFT 5초), Fallback, 서킷 브레이커
-- [ ] `llm/router.py`: Light/Heavy 라우팅 규칙, 모델 ID는 환경변수
-- [ ] Redis 전역 동시성 세마포어(티어별)
-- [ ] `llm/schemas.py`: One-shot 출력 Pydantic 모델(`intent → emotion → red_flags → variants` 순서)
-- [ ] 구조화 출력(JSON Schema 강제) 연동, 파싱 실패 시 1회 재시도
-- [ ] 프롬프트 캐싱 적용(시스템 지침 + 페르소나 정의 고정 prefix)
-- [ ] 사용량(input/output/cached tokens), TTFT, 지연 메트릭 수집
+- [x] 마이그레이션 `0002`: `tone_options`, `prompt_templates`, `transformation_logs`
+- [x] 시드: 페르소나 6종 × (ko, en, ja), 프롬프트 템플릿 v1 (`tone_transform`, `tone_analyze`, `reply_interpret`, `guardrail_classify`) — `uv run python -m seeds.apply` (멱등)
+- [x] `llm/client.py`: Provider 추상화, async 스트리밍 호출, 첫 이벤트 타임아웃 5초, 같은 티어 대체 모델, 서킷 브레이커(프로세스 단위)
+- [x] `llm/router.py`: Light/Heavy 라우팅 규칙, 모델 ID는 환경변수
+- [x] Redis 전역 동시성 제한(티어별, 초과 시 `LLM_BUSY` 503)
+- [x] `llm/schemas.py`: One-shot 출력 Pydantic 모델(`intent → emotion → red_flags → variants` 순서)
+- [x] 구조화 출력(`output_config.format`) 연동, 검증 실패 시 1회 재시도
+- [x] 프롬프트 캐싱 표시(시스템 지침에 `cache_control`, 페르소나·옵션은 user 쪽)
+- [ ] 캐시 적중 확인: v1 시스템 프롬프트는 모델의 최소 캐시 길이보다 짧을 수 있어 실제 API로 `cache_read_input_tokens`를 측정해야 함
+- [x] 사용량(input/output/cached tokens), TTFT, 지연을 `CallResult`로 수집 (적재는 Step 5 로그 작성기)
+- [ ] 실제 Anthropic API로 티어별 호출 확인 (API 키 필요)
 
 ---
 

@@ -262,7 +262,7 @@ Request ─▶ [1] Pydantic 검증 (길이·언어·enum)
 
 ### 5.4 출력 검증
 1. **스키마 검증**: Pydantic 모델로 파싱한다. 실패하면 1회 재시도하고, 그래도 실패하면 `LLM_OUTPUT_INVALID`.
-2. **오프셋 검증**: `red_flags[].start/end`가 원문의 `text`와 일치하는지 확인하고, 어긋나면 문자열 검색으로 보정하거나 해당 항목을 버린다.
+2. **오프셋 계산**: LLM은 문자 위치를 정확히 세지 못하므로 `red_flags[].text`(원문 그대로 복사)만 받고, 서버가 초안에서 그 문자열을 찾아 `start/end`를 계산한다. 찾지 못한 항목은 버린다.
 3. **의도 보존 검사**: 변환 결과의 의도를 경량 모델로 재분류(Heavy 티어 요청에서만, 비동기 샘플링 10%)해 원래 의도와 다르면 품질 메트릭에 기록한다.
 4. **안전 필터**: 출력에 욕설, 혐오, 조종성 표현이 있으면 해당 variant를 제외한다.
 
@@ -289,7 +289,11 @@ heavy if (
     or user.plan == "premium"
 ) else light
 ```
-- 모델 ID는 코드에 하드코딩하지 않고 `settings.LLM_MODEL_LIGHT` / `LLM_MODEL_HEAVY` 환경변수로 관리한다.
+- 모델 ID는 코드에 하드코딩하지 않고 `LLM_MODEL_LIGHT` / `LLM_MODEL_HEAVY`(+ `_FALLBACK`) 환경변수로 관리한다.
+- **모델별 요청 파라미터** (`LLM_MODEL_EFFORT`, `LLM_SERVER_FALLBACK_MODELS`):
+  - Haiku 4.5: `effort`를 보내지 않는다(지원 안 함). 
+  - Sonnet 5.5 / Opus 5.5: `output_config.effort="low"`(지연 우선). temperature 등 sampling 파라미터는 보내지 않는다(400).
+  - Sonnet 5.5 / Opus 5.5: 안전 분류기 거절 시 서버 측 대체 재시도 `fallbacks: "default"`(beta `server-side-fallback-2026-07-01`). 그래도 `stop_reason: "refusal"`이면 `LLM_REFUSED`.
 - **Fallback**: 제공자가 5xx나 타임아웃(TTFT 5초 초과)을 내면 같은 티어의 보조 모델로 1회 전환한다. 서킷 브레이커로 연속 실패 시 30초간 보조 모델로 직행한다.
 - **확장**: FastAPI 워커는 Stateless라서 CPU와 동시 SSE 연결 수 기준으로 오토스케일한다. 병목은 LLM 제공사 Rate Limit이므로 Redis 기반 전역 동시성 세마포어로 티어별 동시 호출 수를 제한한다.
 

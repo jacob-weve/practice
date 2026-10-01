@@ -56,6 +56,23 @@ class Settings(BaseSettings):
 
     consent_version: str = "2026-10-01"
 
+    # LLM. 모델 ID는 코드에 하드코딩하지 않는다 (CLAUDE.md §2.1).
+    anthropic_api_key: SecretStr = SecretStr("")  # 비어 있으면 SDK 기본 자격 증명 탐색
+    llm_model_light: str = "claude-haiku-4-5"
+    llm_model_heavy: str = "claude-sonnet-5-5"
+    # 제공사 장애(5xx/타임아웃) 시 같은 티어에서 쓸 보조 모델
+    llm_model_light_fallback: str = "claude-sonnet-5-5"
+    llm_model_heavy_fallback: str = "claude-opus-5-5"
+    # 모델별 effort. 목록에 없는 모델(Haiku 4.5)에는 effort를 보내지 않는다(400).
+    llm_model_effort: dict[str, str] = {"claude-sonnet-5-5": "low", "claude-opus-5-5": "low"}
+    # 안전 분류기 거절 시 서버 측 대체 모델 재시도(fallbacks="default")를 켤 모델
+    llm_server_fallback_models: list[str] = ["claude-sonnet-5-5", "claude-opus-5-5"]
+    llm_first_event_timeout_seconds: float = 5.0
+    llm_request_timeout_seconds: float = 30.0
+    llm_max_concurrency: dict[str, int] = {"light": 50, "heavy": 20}
+    llm_circuit_failure_threshold: int = 3
+    llm_circuit_open_seconds: float = 30.0
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

@@ -65,7 +65,7 @@ CREATE TYPE consent_type      AS ENUM ('terms_of_service', 'privacy_policy', 'ag
                                        'marketing', 'quality_log_collection');
 CREATE TYPE llm_tier          AS ENUM ('light', 'heavy');
 CREATE TYPE transform_kind    AS ENUM ('tone_transform', 'tone_analyze', 'reply_interpret');
-CREATE TYPE log_status        AS ENUM ('success', 'guardrail_blocked', 'llm_error', 'schema_invalid');
+CREATE TYPE log_status        AS ENUM ('success', 'guardrail_blocked', 'llm_error', 'schema_invalid', 'refused');
 ```
 
 ---
@@ -254,8 +254,8 @@ CREATE TABLE tone_options (
 | user_template | text | NOT NULL | 데이터 블록 템플릿(`{context}`, `{draft}` 등 자리표시자, 렌더 시 이스케이프) |
 | output_schema | jsonb | NOT NULL | JSON Mode 출력 스키마 |
 | model_tier | llm_tier | NOT NULL | |
-| temperature | numeric(3,2) | NOT NULL, DEFAULT 0.7 | |
-| max_tokens | integer | NOT NULL, DEFAULT 1200 | |
+| effort | varchar(10) | NULL | `low`/`medium`/`high`. NULL이면 모델별 기본값. temperature는 쓰지 않는다(Claude Sonnet 5.5 등 최신 모델은 sampling 파라미터를 거부) |
+| max_tokens | integer | NOT NULL, DEFAULT 2048 | |
 | is_active | boolean | NOT NULL, DEFAULT false | 이름+locale당 활성 1개 |
 | rollout_percent | smallint | NOT NULL, DEFAULT 100 | A/B 실험용 |
 | created_by | varchar(50) | NOT NULL | |
@@ -271,8 +271,8 @@ CREATE TABLE prompt_templates (
     user_template   text NOT NULL,
     output_schema   jsonb NOT NULL,
     model_tier      llm_tier NOT NULL,
-    temperature     numeric(3,2) NOT NULL DEFAULT 0.7,
-    max_tokens      integer NOT NULL DEFAULT 1200,
+    effort          varchar(10),
+    max_tokens      integer NOT NULL DEFAULT 2048,
     is_active       boolean NOT NULL DEFAULT false,
     rollout_percent smallint NOT NULL DEFAULT 100 CHECK (rollout_percent BETWEEN 0 AND 100),
     created_by      varchar(50) NOT NULL,
@@ -281,7 +281,8 @@ CREATE TABLE prompt_templates (
 );
 CREATE UNIQUE INDEX uq_prompt_active ON prompt_templates(name, locale) WHERE is_active;
 ```
-- 활성 템플릿은 애플리케이션 시작 시 메모리에 캐시하고, 변경 시 Redis Pub/Sub로 무효화한다.
+- 시드: `backend/seeds/catalog.py`(내용), `uv run python -m seeds.apply`(멱등 적용). `output_schema`는 `app/llm/schemas.py`의 Pydantic 모델에서 `anthropic.transform_schema`로 만든다.
+- (예정) 활성 템플릿을 메모리에 캐시하고 변경 시 Redis Pub/Sub로 무효화한다. 현재는 요청마다 조회한다.
 - 템플릿은 수정하지 않고(immutable) 새 버전을 추가한다 → 로그와 버전을 정확히 연결할 수 있다.
 
 ### 4.7 `transformation_logs` — 품질 분석 로그 (PII 마스킹, Opt-in)
@@ -290,7 +291,7 @@ CREATE UNIQUE INDEX uq_prompt_active ON prompt_templates(name, locale) WHERE is_
 |---|---|---|---|
 | id | uuid | PK | |
 | user_id | uuid | FK → users.id ON DELETE CASCADE, NULL | |
-| request_id | varchar(40) | NOT NULL | X-Request-ID |
+| request_id | varchar(64) | NOT NULL | X-Request-ID |
 | kind | transform_kind | NOT NULL | |
 | tone_option_key | varchar(40) | NULL | |
 | prompt_template_id | uuid | FK → prompt_templates.id | |
@@ -319,7 +320,7 @@ CREATE UNIQUE INDEX uq_prompt_active ON prompt_templates(name, locale) WHERE is_
 CREATE TABLE transformation_logs (
     id                  uuid PRIMARY KEY,
     user_id             uuid REFERENCES users(id) ON DELETE CASCADE,
-    request_id          varchar(40) NOT NULL,
+    request_id          varchar(64) NOT NULL,
     kind                transform_kind NOT NULL,
     tone_option_key     varchar(40),
     prompt_template_id  uuid REFERENCES prompt_templates(id),

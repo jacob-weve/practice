@@ -15,10 +15,16 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.db.session import create_engine, create_sessionmaker
+from app.llm.client import AnthropicProvider, CircuitBreaker, LlmClient, LlmProvider
 from app.users.router import router as users_router
 
 
-def create_app(settings: Settings | None = None, *, redis: Redis | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    redis: Redis | None = None,
+    llm_provider: LlmProvider | None = None,
+) -> FastAPI:
     overridden = settings is not None
     settings = settings or get_settings()
 
@@ -29,6 +35,14 @@ def create_app(settings: Settings | None = None, *, redis: Redis | None = None) 
         app.state.sessionmaker = create_sessionmaker(engine)
         app.state.redis = redis or Redis.from_url(settings.redis_url, decode_responses=True)
         app.state.http_client = httpx.AsyncClient(timeout=settings.oauth_http_timeout_seconds)
+        app.state.llm_client = LlmClient(
+            llm_provider or AnthropicProvider(settings),
+            settings,
+            app.state.redis,
+            CircuitBreaker(
+                settings.llm_circuit_failure_threshold, settings.llm_circuit_open_seconds
+            ),
+        )
         try:
             yield
         finally:

@@ -102,6 +102,36 @@ class ProviderUnavailableError(AuthError):
     http_status = 503
 
 
+class InputTooLongError(AppError):
+    code = "INPUT_TOO_LONG"
+    http_status = 413
+
+
+class InputRejectedError(AppError):
+    code = "INPUT_REJECTED"
+    http_status = 422
+
+
+class LlmUpstreamError(AppError):
+    code = "LLM_UPSTREAM_ERROR"
+    http_status = 502
+
+
+class LlmOutputInvalidError(AppError):
+    code = "LLM_OUTPUT_INVALID"
+    http_status = 502
+
+
+class LlmRefusedError(AppError):
+    code = "LLM_REFUSED"
+    http_status = 422
+
+
+class LlmBusyError(AppError):
+    code = "LLM_BUSY"
+    http_status = 503
+
+
 class ConsentRequiredError(AppError):
     code = "CONSENT_REQUIRED"
     http_status = 403

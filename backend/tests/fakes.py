@@ -1,10 +1,13 @@
 """테스트용 가짜 OAuth 제공자(IdP)와 키 생성 도우미."""
 
+import asyncio
 import base64
 import json
 import os
 import secrets
 import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -14,6 +17,14 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
 from app.core.security import pkce_s256
+from app.llm.client import (
+    LlmCall,
+    Started,
+    StreamDone,
+    StreamEvent,
+    TextDelta,
+    TransientProviderError,
+)
 
 
 def rsa_pem_pair() -> tuple[str, str]:
@@ -94,3 +105,59 @@ async def start_authorization(
     query = parse_qs(urlparse(res.json()["authorize_url"]).query)
     nonce = query.get("nonce", [None])[0]
     return res.json()["state"], nonce
+
+
+# ---------------------------------------------------------------- LLM fakes
+
+
+@dataclass
+class Script:
+    """가짜 제공자가 한 번의 호출에서 할 일."""
+
+    text: str = "{}"
+    stop_reason: str = "end_turn"
+    fail: str | None = None  # "before_start" | "hang" | "mid_stream"
+    chunk: int = 7
+
+
+@dataclass
+class RecordedCall:
+    model: str
+    call: LlmCall
+    effort: str | None
+    server_fallback: bool
+
+
+@dataclass
+class FakeLlmProvider:
+    """모델별 스크립트를 순서대로 소비한다. 스크립트가 없으면 default_text로 성공한다."""
+
+    scripts: dict[str, list[Script]] = field(default_factory=dict)
+    by_template: dict[str, str] = field(default_factory=dict)  # 시스템 프롬프트 키워드 → 응답
+    calls: list[RecordedCall] = field(default_factory=list)
+
+    def queue(self, model: str, *scripts: Script) -> None:
+        self.scripts.setdefault(model, []).extend(scripts)
+
+    async def stream(
+        self, model: str, call: LlmCall, *, effort: str | None, server_fallback: bool
+    ) -> AsyncIterator[StreamEvent]:
+        self.calls.append(RecordedCall(model, call, effort, server_fallback))
+        queue = self.scripts.get(model) or []
+        script = queue.pop(0) if queue else Script(text=self._default(call))
+        if script.fail == "before_start":
+            raise TransientProviderError("status:529")
+        if script.fail == "hang":
+            await asyncio.sleep(3600)
+        yield Started(model)
+        for i in range(0, len(script.text), script.chunk):
+            if script.fail == "mid_stream" and i > 0:
+                raise TransientProviderError("status:500")
+            yield TextDelta(script.text[i : i + script.chunk])
+        yield StreamDone(model, script.stop_reason, 100, 50, 80)
+
+    def _default(self, call: LlmCall) -> str:
+        for keyword, text in self.by_template.items():
+            if keyword in call.system:
+                return text
+        return "{}"
