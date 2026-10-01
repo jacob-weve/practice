@@ -1,7 +1,7 @@
 # CLAUDE.md — 말랑톡 (TalkSoft) 프로젝트 컨벤션
 
 이 파일은 AI 코딩 어시스턴트와 개발자가 이 저장소에서 작업할 때 지켜야 할 규칙을 정리한다.
-설계 근거는 아래 문서를 따른다(현재 루트에 있으며, 모노레포 구성 시 `docs/`로 이동): [PRD.md](./PRD.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [DB_SCHEMA.md](./DB_SCHEMA.md), [API_SPEC.md](./API_SPEC.md), [PLAN.md](./PLAN.md).
+설계 근거는 `docs/`의 문서를 따른다: [PRD.md](docs/PRD.md), [ARCHITECTURE.md](docs/ARCHITECTURE.md), [DB_SCHEMA.md](docs/DB_SCHEMA.md), [API_SPEC.md](docs/API_SPEC.md), [PLAN.md](docs/PLAN.md).
 
 ---
 
@@ -27,8 +27,15 @@ cd web && pnpm install && pnpm dev
 pnpm lint && pnpm typecheck && pnpm test
 
 # 전체 로컬 환경
-docker compose up -d
+docker compose -f infra/docker-compose.yml up -d
 ```
+
+### 개발 환경 메모
+- `uv`는 `~/.local/bin`, `pnpm`은 `~/.npm-global/bin`에 있다. 셸에서 못 찾으면 `export PATH=~/.local/bin:~/.npm-global/bin:$PATH`.
+- 저장소 루트의 `.venv`(Python 3.9)가 활성화돼 있으면 uv가 경고한다. backend 명령 전에 `unset VIRTUAL_ENV`.
+- 테스트는 PostgreSQL/Redis 없이 SQLite(aiosqlite) + fakeredis로 돌아간다. 외부 HTTP(OAuth 제공자, LLM)는 respx로 모킹하고, 실제 네트워크 호출 테스트는 만들지 않는다.
+- SQLite에서 통과해도 PostgreSQL 전용 동작(enum 타입, `text[]`, 부분 인덱스, `FOR UPDATE`)은 다르다. 마이그레이션은 `.claude/skills/db-migration` 절차로 PostgreSQL SQL까지 확인한다.
+- 반복 작업 절차는 `.claude/skills/`에 있다: `verify-changes`(검사 실행), `db-migration`(마이그레이션 생성·검증), `add-oauth-provider`(제공자 추가).
 
 ---
 
@@ -57,8 +64,8 @@ docker compose up -d
 ### 2.3 API 규칙
 - 경로는 `/api/v1/` 접두사, 복수형 명사, kebab-case.
 - JSON 필드는 `snake_case`.
-- 에러는 항상 `{"error": {"code", "message", "request_id", "details"}}` 형식. 새 에러 코드를 추가하면 `API_SPEC.md §0.3`과 `locales/*/errors.json`도 함께 갱신한다.
-- API 스펙이 바뀌면 같은 PR에서 `API_SPEC.md`를 갱신한다.
+- 에러는 항상 `{"error": {"code", "message", "request_id", "details"}}` 형식. 새 에러 코드를 추가하면 `docs/API_SPEC.md §0.3`, `backend/app/locales/*/errors.json`, `web/locales/*/errors.json`을 함께 갱신한다.
+- API 스펙이 바뀌면 같은 PR에서 `docs/API_SPEC.md`를 갱신한다.
 
 ### 2.4 커밋/PR
 - Conventional Commits: `feat(auth): add apple form_post callback`
@@ -143,6 +150,7 @@ class ProviderUnavailableError(AuthError): code = "AUTH_PROVIDER_UNAVAILABLE"; h
 ```
 talksoft/
 ├── CLAUDE.md
+├── .claude/skills/                # 반복 작업 절차 (SKILL.md)
 ├── docs/
 │   ├── PRD.md
 │   ├── ARCHITECTURE.md
@@ -150,22 +158,29 @@ talksoft/
 │   ├── API_SPEC.md
 │   └── PLAN.md
 ├── backend/
-│   ├── pyproject.toml
+│   ├── pyproject.toml             # ruff/mypy/pytest 설정 포함
 │   ├── alembic/
-│   │   └── versions/
+│   │   └── versions/              # 0001_auth_tables.py, ...
+│   ├── scripts/
+│   │   └── gen_dev_keys.py        # 로컬 JWT/AES 키 생성
 │   ├── app/
-│   │   ├── main.py                # 앱 팩토리, lifespan(httpx/redis/db), 미들웨어
+│   │   ├── main.py                # create_app(), lifespan(httpx/redis/db), 미들웨어
+│   │   ├── locales/{ko,en,ja}/errors.json   # 에러 메시지 카탈로그
 │   │   ├── core/
 │   │   │   ├── config.py          # Settings (pydantic-settings)
-│   │   │   ├── security.py        # JWT, 해시, 암호화
+│   │   │   ├── deps.py            # DbDep, RedisDep, HttpClientDep, SettingsDep
+│   │   │   ├── security.py        # JWT, 해시, PKCE S256, AES-GCM
 │   │   │   ├── errors.py          # AppError 계층, exception handler
 │   │   │   ├── i18n.py
 │   │   │   ├── logging.py         # 구조화 로그 + PII 스크러버
+│   │   │   ├── middleware.py      # X-Request-ID
 │   │   │   └── rate_limit.py
 │   │   ├── auth/
 │   │   │   ├── router.py
 │   │   │   ├── service.py
 │   │   │   ├── schemas.py
+│   │   │   ├── deps.py            # CurrentUser, ActiveUser, AuthServiceDep
+│   │   │   ├── state_store.py     # OAuth state / Apple handoff (Redis, 1회용)
 │   │   │   ├── tokens.py          # refresh rotation / reuse detection
 │   │   │   └── providers/
 │   │   │       ├── base.py
@@ -174,61 +189,60 @@ talksoft/
 │   │   │       ├── google.py
 │   │   │       ├── naver.py
 │   │   │       └── apple.py
-│   │   ├── users/
-│   │   ├── tone/
-│   │   │   ├── router.py
-│   │   │   ├── service.py
-│   │   │   └── schemas.py
-│   │   ├── reply/
-│   │   ├── llm/
+│   │   ├── users/router.py        # /users/me
+│   │   ├── tone/                  # Step 5
+│   │   ├── reply/                 # Step 6
+│   │   ├── llm/                   # Step 3
 │   │   │   ├── client.py          # provider 추상화, fallback, circuit breaker
 │   │   │   ├── router.py          # light/heavy 라우팅
 │   │   │   ├── guardrails.py
 │   │   │   ├── prompts.py         # build_messages, escape_user_block
 │   │   │   ├── schemas.py         # One-shot 출력 스키마
 │   │   │   └── streaming.py       # 증분 JSON 파서, SSE 직렬화
-│   │   ├── privacy/
+│   │   ├── privacy/               # Step 4
 │   │   │   ├── pii.py
 │   │   │   └── log_writer.py      # TransformationLogWriter (유일한 로그 적재 경로)
 │   │   └── db/
-│   │       ├── base.py
+│   │       ├── base.py            # Base, uuid7, TextArray
 │   │       ├── session.py
 │   │       └── models/
-│   ├── seeds/                     # tone_options, prompt_templates 시드
 │   └── tests/
+│       ├── conftest.py            # SQLite + fakeredis + respx 픽스처
+│       ├── fakes.py               # FakeIdP(JWKS 서명), PKCE 도우미
 │       ├── unit/
 │       ├── integration/
-│       ├── redteam/               # 인젝션/탈옥 테스트셋
-│       └── golden/                # 변환 품질 골든셋
+│       ├── redteam/               # 인젝션/탈옥 테스트셋 (Step 4)
+│       └── golden/                # 변환 품질 골든셋 (Step 5)
 ├── web/
-│   ├── app/
-│   │   ├── [locale]/
-│   │   │   ├── login/
-│   │   │   ├── auth/callback/[provider]/
-│   │   │   ├── transform/
-│   │   │   ├── interpret/
-│   │   │   ├── history/
-│   │   │   └── settings/
+│   ├── app/                       # URL에 로케일 없음 (OAuth Redirect URI 고정)
+│   │   ├── login/
+│   │   ├── auth/callback/[provider]/
+│   │   ├── transform/             # Step 7
+│   │   ├── interpret/
+│   │   ├── history/
+│   │   └── settings/
 │   ├── components/
+│   ├── i18n/request.ts            # 쿠키 → Accept-Language → ko
 │   ├── lib/
-│   │   ├── api/                   # OpenAPI 생성 클라이언트
-│   │   ├── auth/                  # PKCE, 토큰 메모리 저장, refresh 인터셉터
-│   │   ├── sse.ts
-│   │   └── history-db.ts          # IndexedDB
-│   └── locales/
-│       ├── ko/ en/ ja/
+│   │   ├── api/client.ts          # apiFetch, single-flight refresh
+│   │   ├── auth/                  # PKCE, 토큰 메모리 저장, 로그인 흐름
+│   │   ├── sse.ts                 # Step 5
+│   │   └── history-db.ts          # IndexedDB (Step 7)
+│   ├── locales/{ko,en,ja}/{common,auth,errors}.json
+│   └── tests/                     # vitest
 ├── mobile/
 ├── infra/
 │   ├── docker-compose.yml
 │   └── nginx/
-└── .github/workflows/
+└── .github/workflows/ci.yml
 ```
 
 ### 배치 규칙
 - 도메인(auth, tone, reply, users)별로 `router.py / service.py / schemas.py`를 둔다.
 - 도메인 간 직접 import는 `service` 레벨에서만 허용한다. 다른 도메인의 `router`를 import하지 않는다.
 - LLM 호출은 반드시 `app/llm/`을 거친다. 도메인 코드에서 LLM SDK를 직접 import하지 않는다.
-- 새 테이블은 `app/db/models/`에 모델을 추가하고 Alembic 마이그레이션과 `DB_SCHEMA.md`를 함께 갱신한다.
+- 새 테이블은 `app/db/models/`에 모델을 추가하고 Alembic 마이그레이션과 `docs/DB_SCHEMA.md`를 함께 갱신한다.
+- PostgreSQL 전용 타입은 테스트용 SQLite와 호환되게 쓴다: 배열은 `TextArray`, 부분 인덱스는 `postgresql_where`/`sqlite_where`에 `text(...)`.
 
 ---
 
@@ -239,5 +253,6 @@ talksoft/
 - [ ] 새 로그 구문에 토큰·이메일·대화 원문이 들어가지 않는다
 - [ ] 새 LLM 경로가 Guardrail → 프롬프트 격리 → 스키마 검증을 모두 거친다
 - [ ] 새 사용자 노출 문자열이 i18n 키로 되어 있다
-- [ ] API/DB가 바뀌었다면 `API_SPEC.md`/`DB_SCHEMA.md`를 갱신했다
+- [ ] API/DB가 바뀌었다면 `docs/API_SPEC.md`/`docs/DB_SCHEMA.md`를 갱신했다
+- [ ] 완료한 항목을 `docs/PLAN.md`에 체크했다 (사람의 결정이 필요한 항목은 체크하지 않는다)
 - [ ] 비밀값을 커밋하지 않았다

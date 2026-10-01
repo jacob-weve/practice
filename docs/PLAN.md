@@ -1,7 +1,7 @@
 # 말랑톡 (TalkSoft) — 구현 단계 체크리스트
 
 > 목표: **1차 프로토타입** — 소셜 로그인 4종, 말투 변환 One-shot(SSE), 감정 온도계/독소 감지, 답장 해석기가 웹에서 끝까지 동작하는 상태
-> 참조: [PRD.md](./PRD.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [DB_SCHEMA.md](./DB_SCHEMA.md) · [API_SPEC.md](./API_SPEC.md) · [CLAUDE.md](./CLAUDE.md)
+> 참조: [PRD.md](./PRD.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [DB_SCHEMA.md](./DB_SCHEMA.md) · [API_SPEC.md](./API_SPEC.md) · [CLAUDE.md](../CLAUDE.md)
 
 ---
 
@@ -10,18 +10,20 @@
 ### 1.1 문서 검토
 - [ ] PRD의 P0 요구사항 목록을 확정하고 범위 외 항목에 합의
 - [ ] ARCHITECTURE의 모델 티어링 기준과 라우팅 규칙 초기값 검토
-- [ ] DB_SCHEMA와 API_SPEC의 필드 이름·Enum이 서로 일치하는지 교차 검증
+- [x] DB_SCHEMA와 API_SPEC의 필드 이름·Enum이 서로 일치하는지 교차 검증 (인증 영역만 구현하며 확인, 나머지는 Step 3 착수 시)
 - [ ] PRD §9 오픈 이슈 3건에 담당자와 결정 기한 지정
 
 ### 1.2 저장소 및 개발 환경
-- [ ] Git 저장소 초기화, `main` 브랜치 보호 규칙 설정
-- [ ] 모노레포 구조 생성 (`backend/`, `web/`, `mobile/`, `docs/`, `infra/`) — [CLAUDE.md §4](./CLAUDE.md) 참고
-- [ ] Python 3.12 + `uv` 프로젝트 생성, FastAPI·Uvicorn·Pydantic v2·SQLAlchemy 2.0·asyncpg·Alembic·httpx·PyJWT·redis 설치
-- [ ] Next.js 15 + TypeScript + Tailwind + next-intl 프로젝트 생성
-- [ ] `docker-compose.yml`: PostgreSQL 16, Redis 7, backend, web
-- [ ] `.env.example` 작성 (실제 비밀값 커밋 금지), `pydantic-settings` 기반 `core/config.py`
-- [ ] pre-commit: ruff, ruff-format, mypy, eslint, prettier, **gitleaks**
-- [ ] CI 파이프라인(GitHub Actions): lint → type check → test → pip-audit
+- [x] Git 저장소 초기화
+- [ ] `main` 브랜치 보호 규칙 설정 (GitHub 저장소 관리자 권한 필요)
+- [x] 모노레포 구조 생성 (`backend/`, `web/`, `mobile/`, `docs/`, `infra/`) — [CLAUDE.md §4](../CLAUDE.md) 참고
+- [x] Python 3.12 + `uv` 프로젝트 생성, FastAPI·Uvicorn·Pydantic v2·SQLAlchemy 2.0·asyncpg·Alembic·httpx·PyJWT·redis 설치
+- [x] Next.js 15 + TypeScript + Tailwind + next-intl 프로젝트 생성
+- [x] `docker-compose.yml`: PostgreSQL 16, Redis 7, backend, web
+- [x] `.env.example` 작성 (실제 비밀값 커밋 금지), `pydantic-settings` 기반 `core/config.py`
+- [x] pre-commit: ruff, ruff-format, mypy, eslint, **gitleaks** (설치: `uvx pre-commit install`)
+- [ ] prettier 설정 (Step 7에서 추가)
+- [x] CI 파이프라인(GitHub Actions): lint → type check → test → pip-audit
 
 ### 1.3 외부 서비스 등록
 - [ ] 카카오 개발자 앱 생성, OIDC 활성화, Redirect URI 등록, 동의 항목(닉네임, 이메일) 설정
@@ -36,51 +38,54 @@
 ## Step 2. OAuth 소셜 로그인 연동
 
 ### 2.1 DB 및 기반
-- [ ] Alembic 초기 마이그레이션: Enum 타입, `users`, `social_accounts`, `refresh_tokens`, `user_consents`
-- [ ] `core/security.py`: RS256 키 로딩(`kid`), Access Token 발급/검증, SHA-256 해시 유틸
-- [ ] `core/errors.py`: `AuthError` 계층과 에러 코드 → HTTP 매핑, i18n 메시지
-- [ ] 인증 의존성 `get_current_user` (만료 → `AUTH_TOKEN_EXPIRED`, `status=pending_consent` → `CONSENT_REQUIRED`)
+- [x] Alembic 초기 마이그레이션 `0001`: Enum 타입, `users`, `social_accounts`, `refresh_tokens`, `user_consents` (SQLite 왕복 + PostgreSQL 오프라인 SQL로 검증)
+- [ ] 실제 PostgreSQL에 `alembic upgrade head` 적용 확인 (Docker 기동 필요)
+- [x] `core/security.py`: RS256 키 로딩(`kid`), Access Token 발급/검증, SHA-256 해시 유틸
+- [x] `core/errors.py`: `AuthError` 계층과 에러 코드 → HTTP 매핑, i18n 메시지
+- [x] 인증 의존성 `get_current_user` (만료 → `AUTH_TOKEN_EXPIRED`, `status=pending_consent` → `CONSENT_REQUIRED`)
 
 ### 2.2 공통 OAuth 흐름
-- [ ] `OAuthProvider` 프로토콜 정의 (`build_authorize_url`, `exchange_code`, `fetch_identity`, `revoke`)
-- [ ] `GET /auth/authorize/{provider}`: state/nonce 생성, `code_challenge` 바인딩, Redis 저장(TTL 10분)
-- [ ] `redirect_uri` 화이트리스트 검증
-- [ ] state 1회용 소비(`GETDEL`), 불일치/만료 시 `AUTH_INVALID_STATE`
-- [ ] JWKS 조회 및 Redis 캐시(TTL 1시간, `kid` 미스 시 강제 갱신)
-- [ ] id_token 공통 검증기: 서명, `iss`, `aud`, `exp`(시계 오차 60초), `iat`, `nonce`
+- [x] `OAuthProvider` 프로토콜 정의 (`build_authorize_url`, `exchange_code`, `fetch_identity`, `revoke`)
+- [x] `GET /auth/authorize/{provider}`: state/nonce 생성, `code_challenge` 바인딩, Redis 저장(TTL 10분)
+- [x] `redirect_uri` 화이트리스트 검증
+- [x] state 1회용 소비(`GETDEL`), 불일치/만료 시 `AUTH_INVALID_STATE`
+- [x] JWKS 조회 및 Redis 캐시(TTL 1시간, `kid` 미스 시 강제 갱신)
+- [x] id_token 공통 검증기: 서명, `iss`, `aud`, `exp`(시계 오차 60초), `iat`, `nonce`
 
 ### 2.3 제공자별 구현
-- [ ] **카카오**: 토큰 교환, id_token 검증, 이메일/닉네임 매핑
-- [ ] **구글**: 토큰 교환, id_token 검증, `email_verified` 처리
-- [ ] **네이버**: 토큰 교환, `/v1/nid/me` 호출, `resultcode` 검사
-- [ ] **애플**: ES256 `client_secret` JWT 생성(캐시, 만료 전 갱신)
-- [ ] 애플: `POST /auth/callback/apple` form_post 수신 → handoff 코드 발급
-- [ ] 애플: 최초 `user`(이름) 저장, `is_private_email` / `email_verified` 문자열 정규화
-- [ ] 애플: provider refresh_token **AES-GCM 암호화 저장**(탈퇴 revoke용)
-- [ ] 애플: 서버 간 알림 웹훅(`/auth/apple/notifications`) 서명 검증 및 이벤트 처리
+- [x] **카카오**: 토큰 교환, id_token 검증, 이메일/닉네임 매핑 (탈퇴 unlink는 Admin Key 사용)
+- [x] **구글**: 토큰 교환, id_token 검증, `email_verified` 처리
+- [x] **네이버**: 토큰 교환, `/v1/nid/me` 호출, `resultcode` 검사
+- [x] **애플**: ES256 `client_secret` JWT 생성(캐시, 만료 전 갱신)
+- [x] 애플: `POST /auth/callback/apple` form_post 수신 → handoff 코드 발급
+- [x] 애플: 최초 `user`(이름) 저장, `is_private_email` / `email_verified` 문자열 정규화
+- [x] 애플: provider refresh_token **AES-GCM 암호화 저장**(탈퇴 revoke용)
+- [x] 애플: 서버 간 알림 웹훅(`/auth/apple/notifications`) 서명 검증 및 이벤트 처리
 
 ### 2.4 가입/토큰/동의
-- [ ] `POST /auth/login/{provider}`: `(provider, provider_user_id)` 조회 → 없으면 가입(트랜잭션)
-- [ ] 이메일이 같아도 자동 병합하지 않음 (테스트로 보장)
-- [ ] Refresh Token 발급(256bit 랜덤), 해시 저장, `family_id` 부여
-- [ ] 웹: `HttpOnly; Secure; SameSite=Strict` 쿠키 / 모바일: 바디 반환 (`X-Client-Platform`)
-- [ ] `POST /auth/refresh`: Rotation, `SELECT ... FOR UPDATE`, **재사용 감지 시 family 전체 폐기**
-- [ ] `POST /auth/logout`, `POST /auth/consents`, `POST /auth/link/{provider}`
-- [ ] `DELETE /users/me`: 제공자 연결 해제(재시도 큐) + CASCADE 삭제
+- [x] `POST /auth/login/{provider}`: `(provider, provider_user_id)` 조회 → 없으면 가입(트랜잭션)
+- [x] 이메일이 같아도 자동 병합하지 않음 (테스트로 보장)
+- [x] Refresh Token 발급(256bit 랜덤), 해시 저장, `family_id` 부여
+- [x] 웹: `HttpOnly; Secure; SameSite=Strict` 쿠키 / 모바일: 바디 반환 (`X-Client-Platform`)
+- [x] `POST /auth/refresh`: Rotation, `SELECT ... FOR UPDATE`, **재사용 감지 시 family 전체 폐기**
+- [x] `POST /auth/logout`, `POST /auth/consents`, `POST /auth/link/{provider}`
+- [x] `DELETE /users/me`: 제공자 연결 해제(실패 시 Redis `oauth:revoke_queue` 적재) + CASCADE 삭제
+- [ ] revoke 재시도 큐 소비 워커
 
 ### 2.5 프론트엔드 로그인
-- [ ] PKCE 유틸(`code_verifier` 생성, S256 challenge), verifier는 `sessionStorage`에 일시 보관 후 즉시 삭제
-- [ ] 로그인 화면: 제공자 4종 버튼(각 브랜드 가이드라인 준수)
-- [ ] 콜백 페이지(`/auth/callback/[provider]`) → `POST /auth/login/{provider}`
-- [ ] 약관 동의 모달(필수 3 + 선택 2), `pending_consent` 처리
-- [ ] Access Token 메모리 보관 + 401 시 single-flight refresh 인터셉터
+- [x] PKCE 유틸(`code_verifier` 생성, S256 challenge), verifier는 `sessionStorage`에 일시 보관 후 즉시 삭제
+- [x] 로그인 화면: 제공자 4종 버튼(브랜드 색상 적용)
+- [ ] 제공자 공식 로고 에셋 적용 및 브랜드 가이드 검수
+- [x] 콜백 페이지(`/auth/callback/[provider]`) → `POST /auth/login/{provider}`
+- [x] 약관 동의 모달(필수 3 + 선택 2), `pending_consent` 처리
+- [x] Access Token 메모리 보관 + 401 시 single-flight refresh 인터셉터
 
 ### 2.6 테스트
-- [ ] 제공자 HTTP 응답 모킹(respx)으로 4종 로그인 성공/실패 단위 테스트
-- [ ] state 재사용, PKCE 불일치, nonce 불일치, 만료된 id_token, 잘못된 `aud` 거부 테스트
-- [ ] Refresh Rotation과 재사용 탐지 통합 테스트(동시 요청 포함)
-- [ ] 애플 Relay 이메일 및 이메일 미제공 가입 테스트
-- [ ] 로그에 토큰/이메일이 찍히지 않는지 검사하는 테스트
+- [x] 제공자 HTTP 응답 모킹(respx)으로 4종 로그인 성공/실패 단위 테스트
+- [x] state 재사용, PKCE 불일치, nonce 불일치, 만료된 id_token, 잘못된 `aud` 거부 테스트
+- [x] Refresh Rotation과 재사용 탐지 통합 테스트(동시 요청 포함)
+- [x] 애플 Relay 이메일 및 이메일 미제공 가입 테스트
+- [x] 로그에 토큰/이메일이 찍히지 않는지 검사하는 테스트
 
 ---
 

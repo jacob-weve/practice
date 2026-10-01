@@ -5,7 +5,7 @@
 | 문서 버전 | v0.1 (초안) |
 | 작성일 | 2026-10-01 |
 | 상태 | Draft — 리뷰 대기 |
-| 관련 문서 | [ARCHITECTURE.md](./ARCHITECTURE.md), [DB_SCHEMA.md](./DB_SCHEMA.md), [API_SPEC.md](./API_SPEC.md), [PLAN.md](./PLAN.md), [CLAUDE.md](./CLAUDE.md) |
+| 관련 문서 | [ARCHITECTURE.md](./ARCHITECTURE.md), [DB_SCHEMA.md](./DB_SCHEMA.md), [API_SPEC.md](./API_SPEC.md), [PLAN.md](./PLAN.md), [CLAUDE.md](../CLAUDE.md) |
 
 ---
 

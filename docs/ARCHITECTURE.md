@@ -123,7 +123,9 @@ app/
 ## 4. OAuth 2.0 / OIDC 인증 파이프라인
 
 ### 4.1 설계 결정
-- **Authorization Code + PKCE(S256)를 모든 제공자에 적용한다.** 웹과 모바일 모두 클라이언트가 `code_verifier`를 만들고, 서버는 `code` 교환 시 그 값을 함께 보낸다.
+- **Authorization Code + PKCE(S256)를 모든 제공자에 적용한다.** 클라이언트가 `code_verifier`를 만들고 `code_challenge`만 서버에 보낸다. 서버는 challenge를 `state`에 묶어 Redis에 저장하고, 로그인 시 `S256(code_verifier)`가 저장된 challenge와 같은지 **직접 검증한다**(서버 측 PKCE 바인딩).
+  - 이렇게 하면 PKCE를 지원하지 않는 제공자(네이버, 애플)와 지원 여부가 불확실한 제공자(카카오)에서도 "인가를 시작한 클라이언트만 로그인을 끝낼 수 있다"는 보장이 같다.
+  - PKCE를 지원하는 제공자(구글)에는 `code_challenge`/`code_verifier`를 함께 보내 이중으로 검증한다(`OAuthProvider.supports_pkce`).
 - **토큰 교환은 백엔드가 한다.** `client_secret`은 서버에만 둔다. 애플은 서버가 ES256 서명으로 `client_secret` JWT를 만든다.
 - 제공자의 Access/Refresh Token은 **저장하지 않는다.** 신원 확인 후 버리고, 탈퇴 시 연결 해제에 필요한 경우에만 암호화해 보관한다(애플 revoke용 refresh_token 등).
 - 서비스 자체 JWT를 발급해 이후 모든 API 인증에 쓴다.
@@ -158,15 +160,16 @@ Client                     Backend                         Provider
 | 식별자 | `sub`(회원번호) | `sub` | `response.id` | `sub` |
 | 신원 검증 | id_token(JWKS) | id_token(JWKS) | `/v1/nid/me` 호출 | id_token(JWKS) |
 | 콜백 방식 | GET query | GET query | GET query | **POST form_post** |
+| 제공자 PKCE 전달 | X (서버 바인딩만) | O | X (서버 바인딩만) | X (서버 바인딩만) |
 | client_secret | 선택(보안 강화 시 사용) | 고정값 | 고정값 | **ES256 JWT (최대 6개월)** |
 | 이름 제공 | 매번 | 매번 | 매번 | **최초 1회만** |
-| 연결 해제 | `/v1/user/unlink` | `/revoke` | `grant_type=delete` | `/auth/revoke` |
+| 연결 해제 | `/v1/user/unlink` (Admin Key) | — (토큰 미보관) | — (토큰 미보관) | `/auth/revoke` (암호화 보관한 refresh_token) |
 
 ### 4.4 Sign in with Apple 특이사항
 - `id_token`의 `email`이 `@privaterelay.appleid.com`일 수 있다 → `users.is_private_email = true`로 저장하고, 서비스 메일은 애플 Relay 서버에 등록한 발신 도메인으로만 보낸다.
 - `email_verified`, `is_private_email` 클레임은 문자열(`"true"`)일 수 있어서 정규화가 필요하다.
 - `user` 파라미터(이름 JSON)는 최초 인가 응답에만 오므로 **트랜잭션 안에서 바로 저장**한다. 저장에 실패하면 사용자가 애플 설정에서 앱 연결을 해제해야만 다시 받을 수 있다.
-- 웹은 `response_mode=form_post`라서 백엔드 콜백 엔드포인트(`POST /api/v1/auth/callback/apple`)가 받고, 1회용 교환 코드로 프론트에 넘긴다.
+- 웹은 `response_mode=form_post`라서 백엔드 콜백 엔드포인트(`POST /api/v1/auth/callback/apple`)가 받고, `code`·`state`·`user`를 Redis에 60초간 보관한 뒤 1회용 `handoff` 키만 프론트에 303 리다이렉트로 넘긴다. 프론트는 `handoff`와 `code_verifier`로 로그인을 완료한다.
 - 서버 간 알림(`email-disabled`, `consent-revoked`, `account-delete`) 웹훅을 받아 처리한다.
 
 ### 4.5 서비스 JWT 정책
@@ -183,6 +186,9 @@ Client                     Backend                         Provider
 
 - 서명 키는 `kid`로 회전하며, 공개키는 `/.well-known/jwks.json`으로 노출한다(내부 서비스 확장 대비).
 - 로그아웃하면 Refresh Token을 폐기한다. Access Token은 짧은 수명에 맡긴다(블랙리스트 미사용).
+- **동시 Refresh 경합**: 회전된 지 `REFRESH_REUSE_GRACE_SECONDS`(기본 5초) 이내에 같은 부모 토큰이 다시 오면 재사용으로 보지 않고 같은 부모에서 새 자식을 발급한다. 그 이후에 오면 재사용으로 판단해 family 전체를 폐기한다.
+- **탈퇴 시 제공자 연결 해제**: 실패해도 사용자 삭제는 진행하고, 해제 요청은 Redis 리스트 `oauth:revoke_queue`에 적재해 별도 워커가 재시도한다.
+- 웹 Refresh 요청은 쿠키 외에 `X-Requested-With: talksoft` 헤더를 요구해 교차 사이트 요청을 막는다.
 
 ---
 
@@ -372,6 +378,7 @@ locales/
 └── ja/ ...
 ```
 
+- **웹 라우팅**: URL에 로케일을 넣지 않는다(`/login`, `/auth/callback/kakao`). OAuth Redirect URI를 로케일과 무관하게 고정하기 위해서다. 로케일은 `NEXT_LOCALE` 쿠키 → `Accept-Language` → `ko` 순으로 정한다(`web/i18n/request.ts`).
 - **백엔드**: 에러 응답은 `code`(예: `AUTH_PROVIDER_DENIED`)와 로케일에 맞게 번역한 `message`를 함께 준다. 로케일은 `Accept-Language`로 협상한다. 클라이언트는 `code`로 자체 번역할 수 있다.
 - **DB 다국어**: `tone_options`, `prompt_templates`는 `locale` 컬럼을 두고 `(key, locale)`로 조회한다. 없으면 `en` → `ko` 순으로 Fallback.
 - **LLM 출력 언어**: `target_lang`을 프롬프트 옵션으로 넘기고, 출력의 `rationale`, `suggestion`은 **UI 언어**로, `variants[].text`는 **target_lang**으로 생성하도록 스키마 설명에 명시한다.

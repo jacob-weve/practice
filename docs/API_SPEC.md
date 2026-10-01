@@ -59,8 +59,10 @@
 
 | HTTP | code | 설명 |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | 요청 스키마 위반 |
+| 400 | `VALIDATION_ERROR` | 요청 스키마 위반. `details.fields[]`에 `loc`, `type`만 담는다(입력값은 담지 않음) |
+| 404 | `NOT_FOUND` | 없는 경로/리소스 |
 | 400 | `AUTH_UNSUPPORTED_PROVIDER` | 지원하지 않는 provider |
+| 400 | `AUTH_INVALID_REDIRECT_URI` | 화이트리스트에 없는 redirect_uri |
 | 400 | `AUTH_INVALID_STATE` | state 불일치·만료·재사용 |
 | 400 | `AUTH_PKCE_MISMATCH` | code_verifier 검증 실패 |
 | 401 | `AUTH_PROVIDER_DENIED` | 제공자 토큰 교환 실패, 사용자 동의 취소 |
@@ -78,6 +80,7 @@
 | 502 | `LLM_UPSTREAM_ERROR` | LLM 제공사 오류(Fallback 실패) |
 | 502 | `LLM_OUTPUT_INVALID` | LLM 출력 스키마 검증 실패(재시도 후) |
 | 503 | `AUTH_PROVIDER_UNAVAILABLE` | OAuth 제공자 장애 |
+| 500 | `INTERNAL_ERROR` | 처리되지 않은 서버 오류 |
 
 ### 0.4 공통 Enum
 | 이름 | 값 |
@@ -126,11 +129,17 @@ PKCE `code_challenge`를 받아 서버가 `state`/`nonce`를 만들고 Redis에 
 {
   "$id": "SocialLoginRequest",
   "type": "object",
-  "required": ["code", "state", "code_verifier", "redirect_uri"],
+  "required": ["code_verifier", "redirect_uri"],
+  "oneOf": [
+    { "required": ["code", "state"], "not": { "required": ["handoff"] } },
+    { "required": ["handoff"], "not": { "required": ["code"] } }
+  ],
   "additionalProperties": false,
   "properties": {
     "code":          { "type": "string", "minLength": 1, "maxLength": 2048 },
     "state":         { "type": "string", "minLength": 16, "maxLength": 128 },
+    "handoff":       { "type": "string", "minLength": 16, "maxLength": 128,
+                       "description": "Apple 웹 form_post 콜백(1.3)이 발급한 1회용 키. code·state 대신 사용" },
     "code_verifier": { "type": "string", "minLength": 43, "maxLength": 128,
                        "pattern": "^[A-Za-z0-9\\-._~]+$" },
     "redirect_uri":  { "type": "string", "format": "uri" },
@@ -271,7 +280,8 @@ Apple은 웹에서 `response_mode=form_post`로 콜백하므로 백엔드가 받
 **Request** (`application/x-www-form-urlencoded`): `code`, `state`, `id_token`, `user`(최초 1회)
 
 **Response 303**: `Location: https://talksoft.app/auth/callback/apple?handoff=<1회용 코드, 60초>`
-→ 프론트가 `handoff`, `code_verifier`로 `POST /auth/login/apple`을 호출한다(이때 `code` 대신 `handoff` 사용). 서버는 `user` 정보를 handoff 레코드에 임시 보관한다(Redis, TTL 60초).
+→ 프론트가 `{handoff, code_verifier, redirect_uri}`로 `POST /auth/login/apple`을 호출한다(`code`·`state` 대신 `handoff`). 서버는 `code`·`state`·`user`를 handoff 레코드에 임시 보관한다(Redis, TTL 60초, 1회용).
+사용자가 취소하면 `Location: .../auth/callback/apple?error=access_denied`로 보낸다.
 
 ### 1.4 `POST /auth/refresh` — 토큰 재발급 (Rotation)
 
@@ -344,7 +354,7 @@ Apple은 웹에서 `response_mode=form_post`로 콜백하므로 백엔드가 받
 ```
 
 ### 1.10 `POST /auth/apple/notifications` — Apple 서버 간 알림 웹훅
-Apple이 서명한 JWT(`payload`)를 검증하고 `email-disabled`, `email-enabled`, `consent-revoked`, `account-delete` 이벤트를 처리한다. **Response 200**.
+요청 바디 `{"payload": "<Apple 서명 JWT>"}`. Apple JWKS로 서명·`iss`·`aud`를 검증하고 `email-disabled`, `email-enabled`, `consent-revoked`, `account-delete` 이벤트를 처리한다. **Response 200**.
 
 ---
 
@@ -745,7 +755,7 @@ data: {"usage":{"input_tokens":812,"output_tokens":540,"cached_tokens":600},"lat
 |---|---|---|---|
 | GET | `/auth/authorize/{provider}` | — | 인가 URL 발급(PKCE) |
 | POST | `/auth/login/{provider}` | — | 소셜 로그인/가입 |
-| POST | `/auth/callback/apple` | — | Apple form_post 콜백 |
+| POST | `/auth/callback/apple` | — | Apple form_post 콜백 (303 → handoff) |
 | POST | `/auth/refresh` | Refresh | 토큰 재발급(Rotation) |
 | POST | `/auth/logout` | O | 로그아웃 |
 | POST | `/auth/consents` | O | 약관 동의 |
