@@ -24,7 +24,10 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy app
       - run: uv run pytest --cov --cov-report=term-missing
-      - run: uvx pip-audit
+      - name: Audit dependencies
+        run: |
+          uv export --format requirements-txt --no-emit-project > "$RUNNER_TEMP/req.txt"
+          uvx pip-audit -r "$RUNNER_TEMP/req.txt" --disable-pip
 
   web:
     runs-on: ubuntu-latest
@@ -53,6 +56,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm audit --prod
 
   secrets:
     runs-on: ubuntu-latest
