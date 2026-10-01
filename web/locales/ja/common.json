@@ -1,0 +1,9 @@
+{
+  "appName": "マラントーク",
+  "tagline": "送る前に、もう一度やわらかく",
+  "loading": "少々お待ちください…",
+  "logout": "ログアウト",
+  "greeting": "{name}さん、ようこそ！",
+  "guest": "ゲスト",
+  "goLogin": "ログインへ"
+}

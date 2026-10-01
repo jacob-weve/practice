@@ -1,0 +1,9 @@
+{
+  "appName": "TalkSoft",
+  "tagline": "Soften it once more before you send",
+  "loading": "Just a moment…",
+  "logout": "Log out",
+  "greeting": "Welcome, {name}!",
+  "guest": "there",
+  "goLogin": "Go to login"
+}
