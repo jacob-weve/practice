@@ -16,6 +16,8 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.db.session import create_engine, create_sessionmaker
 from app.llm.client import AnthropicProvider, CircuitBreaker, LlmClient, LlmProvider
+from app.privacy.log_writer import TransformationLogWriter
+from app.tone.router import router as tone_router
 from app.users.router import router as users_router
 
 
@@ -35,6 +37,7 @@ def create_app(
         app.state.sessionmaker = create_sessionmaker(engine)
         app.state.redis = redis or Redis.from_url(settings.redis_url, decode_responses=True)
         app.state.http_client = httpx.AsyncClient(timeout=settings.oauth_http_timeout_seconds)
+        app.state.log_writer = TransformationLogWriter(app.state.sessionmaker)
         app.state.llm_client = LlmClient(
             llm_provider or AnthropicProvider(settings),
             settings,
@@ -82,6 +85,7 @@ def create_app(
     api.include_router(_health_router(settings))
     api.include_router(auth_router)
     api.include_router(users_router)
+    api.include_router(tone_router)
     app.include_router(api)
     return app
 

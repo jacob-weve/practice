@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from pathlib import Path
 
 import httpx
@@ -11,9 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth.providers.apple import AppleProvider
 from app.core.config import Settings
+from app.core.security import create_access_token
 from app.db.base import Base
+from app.db.models import ConsentType, User, UserConsent, UserStatus
 from app.main import create_app
-from tests.fakes import FakeIdP, aes_key_b64, ec_private_pem, rsa_pem_pair
+from seeds.apply import apply_seeds
+from tests.fakes import (
+    DEFAULT_LLM_RESPONSES,
+    FakeIdP,
+    FakeLlmProvider,
+    aes_key_b64,
+    ec_private_pem,
+    rsa_pem_pair,
+)
 
 WEB = "http://localhost:3000"
 REDIRECTS = {
@@ -38,6 +48,7 @@ def settings(tmp_path: Path) -> Settings:
         jwt_private_key=SecretStr(_JWT_PRIVATE),
         jwt_public_key=_JWT_PUBLIC,
         data_encryption_key=SecretStr(aes_key_b64()),
+        llm_canary_token=SecretStr("CANARY-7f3a"),
         cookie_secure=False,
         kakao_client_id="kakao-client",
         kakao_admin_key=SecretStr("kakao-admin"),
@@ -53,12 +64,21 @@ def settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-async def app(settings: Settings) -> AsyncIterator[FastAPI]:
+def llm() -> FakeLlmProvider:
+    return FakeLlmProvider(by_template=dict(DEFAULT_LLM_RESPONSES))
+
+
+@pytest.fixture
+async def app(settings: Settings, llm: FakeLlmProvider) -> AsyncIterator[FastAPI]:
     AppleProvider._cached_secret = None
-    application = create_app(settings, redis=FakeAsyncRedis(decode_responses=True))
+    application = create_app(
+        settings, redis=FakeAsyncRedis(decode_responses=True), llm_provider=llm
+    )
     async with application.router.lifespan_context(application):
         async with application.state.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        async with application.state.sessionmaker() as session:
+            await apply_seeds(session)
         yield application
 
 
@@ -95,3 +115,31 @@ def idps(settings: Settings, mock_http: respx.MockRouter) -> dict[str, FakeIdP]:
     mock_http.get("https://www.googleapis.com/oauth2/v3/certs").respond(json=fakes["google"].jwks())
     mock_http.get("https://appleid.apple.com/auth/keys").respond(json=fakes["apple"].jwks())
     return fakes
+
+
+@pytest.fixture
+async def make_user(
+    app: FastAPI, settings: Settings
+) -> Callable[..., Awaitable[tuple[User, dict[str, str]]]]:
+    """동의를 마친 사용자와 Authorization 헤더를 만든다."""
+
+    async def factory(
+        *, status: UserStatus = UserStatus.ACTIVE, quality_log: bool = False, plan: str = "free"
+    ) -> tuple[User, dict[str, str]]:
+        async with app.state.sessionmaker() as session:
+            user = User(status=status, plan=plan, ui_locale="ko")
+            session.add(user)
+            await session.flush()
+            session.add(
+                UserConsent(
+                    user_id=user.id,
+                    consent_type=ConsentType.QUALITY_LOG_COLLECTION,
+                    version="2026-10-01",
+                    agreed=quality_log,
+                )
+            )
+            await session.commit()
+        token = create_access_token(user.id, settings)
+        return user, {"Authorization": f"Bearer {token}"}
+
+    return factory

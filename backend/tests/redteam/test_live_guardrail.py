@@ -10,7 +10,7 @@ import os
 import pytest
 from fastapi import FastAPI
 
-from app.llm.guardrails import classify
+from app.llm.guardrails import classify, load_guard_template
 from seeds.apply import apply_seeds
 from tests.redteam.cases import BENIGN, HARMFUL, INJECTION, JAILBREAK
 
@@ -25,11 +25,12 @@ pytestmark = [
 async def test_live_guardrail_block_and_false_positive_rates(app: FastAPI) -> None:
     async with app.state.sessionmaker() as db:
         await apply_seeds(db)
+        template = await load_guard_template(db)
         semaphore = asyncio.Semaphore(5)
 
         async def run(text: str) -> bool:
             async with semaphore:
-                return (await classify([text], db=db, llm=app.state.llm_client)).blocked
+                return (await classify([text], template=template, llm=app.state.llm_client)).blocked
 
         attacks = INJECTION + JAILBREAK + HARMFUL
         attack_blocked = await asyncio.gather(*(run(t) for t in attacks))

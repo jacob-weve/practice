@@ -161,3 +161,78 @@ class FakeLlmProvider:
             if keyword in call.system:
                 return text
         return "{}"
+
+
+TRANSFORM_OUTPUT = {
+    "intent": {"label": "decline", "confidence": 0.94},
+    "emotion": {"temperature": 82, "labels": [{"name": "frustration", "score": 0.74}]},
+    "red_flags": [
+        {
+            "text": "그걸 왜 지금 말해요",
+            "type": "blame",
+            "severity": "high",
+            "reason": "상대를 탓하는 질문으로 읽혀요.",
+            "suggestion": "조금 더 일찍 알았다면 좋았을 것 같아요",
+        },
+        {
+            "text": "존재하지 않는 문장",
+            "type": "cold",
+            "severity": "low",
+            "reason": "x",
+            "suggestion": "y",
+        },
+    ],
+    "variants": [
+        {
+            "kind": "primary",
+            "text": "팀장님, 내일까지는 어려울 것 같습니다. 모레 오전은 가능할까요?",
+            "expected_temperature": 42,
+            "rationale": "거절은 유지하고 대안을 제시했어요.",
+        },
+        {
+            "kind": "softer",
+            "text": "팀장님, 최대한 맞춰드리고 싶은데 내일은 빠듯합니다.",
+            "expected_temperature": 35,
+            "rationale": "협조 의지를 먼저 보였어요.",
+        },
+        {
+            "kind": "concise",
+            "text": "내일은 어렵고 모레 오전 가능합니다.",
+            "expected_temperature": 50,
+            "rationale": "핵심만 전했어요.",
+        },
+    ],
+}
+
+ANALYZE_OUTPUT = {
+    "emotion": TRANSFORM_OUTPUT["emotion"],
+    "red_flags": TRANSFORM_OUTPUT["red_flags"][:1],
+}
+
+REPLY_OUTPUT = {
+    "message_emotion": {"temperature": 40, "labels": [{"name": "neutral", "score": 0.7}]},
+    "interpretations": [
+        {"summary": "바빠서 짧게 수락했을 가능성", "likelihood": 0.6, "signals": ["명확한 수락"]},
+        {"summary": "피곤했을 가능성", "likelihood": 0.3, "signals": ["이모지 없음"]},
+    ],
+    "guide": {
+        "summary": "'ㅇㅇ'은 수락 표현이에요.",
+        "avoid": ["따지는 말"],
+        "check_points": ["평소 답장 길이"],
+        "overthinking_warning": True,
+    },
+    "suggested_replies": [
+        {"style": "confirm", "text": "좋아! 7시에 보자", "rationale": "확인"},
+        {"style": "empathize", "text": "오늘 바빴어?", "rationale": "공감"},
+        {"style": "light_shift", "text": "팝콘은 내가 살게", "rationale": "전환"},
+    ],
+}
+
+SAFE_VERDICT = json.dumps({"category": "safe", "score": 0.02})
+
+DEFAULT_LLM_RESPONSES = {
+    "security classifier": SAFE_VERDICT,
+    "Analyze the user's draft": json.dumps(ANALYZE_OUTPUT, ensure_ascii=False),
+    "reply interpreter": json.dumps(REPLY_OUTPUT, ensure_ascii=False),
+    "message coach": json.dumps(TRANSFORM_OUTPUT, ensure_ascii=False),
+}

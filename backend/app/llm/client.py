@@ -199,7 +199,7 @@ class LlmClient:
         finally:
             await self.redis.decr(key)
 
-    async def stream(self, tier: LlmTier, call: LlmCall) -> AsyncIterator[StreamEvent]:
+    async def stream(self, tier: LlmTier, call: LlmCall) -> AsyncGenerator[StreamEvent]:
         """첫 텍스트를 내보내기 전에 실패하면 같은 티어의 다음 모델로 넘어간다."""
         async with self._slot(tier):
             last_error: Exception | None = None
@@ -223,7 +223,7 @@ class LlmClient:
                     last_error = exc
             raise LlmUpstreamError(log_detail="all_models_failed") from last_error
 
-    async def _stream_model(self, model: str, call: LlmCall) -> AsyncIterator[StreamEvent]:
+    async def _stream_model(self, model: str, call: LlmCall) -> AsyncGenerator[StreamEvent]:
         s = self.settings
         effort = call.effort or s.llm_model_effort.get(model)
         if model not in s.llm_model_effort:

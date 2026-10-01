@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import InputRejectedError, LlmOutputInvalidError
 from app.db.models import LlmTier
 from app.llm.client import LlmCall, LlmClient
-from app.llm.prompts import build_messages, data_block, load_template
+from app.llm.prompts import LoadedTemplate, build_messages, data_block, load_template
 from app.llm.schemas import GuardrailVerdict
 
 logger = logging.getLogger(__name__)
@@ -78,10 +78,15 @@ def input_fingerprint(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-async def classify(texts: list[str], *, db: AsyncSession, llm: LlmClient) -> GuardrailResult:
+async def load_guard_template(db: AsyncSession) -> LoadedTemplate:
+    return await load_template(db, "guardrail_classify")
+
+
+async def classify(
+    texts: list[str], *, template: LoadedTemplate, llm: LlmClient
+) -> GuardrailResult:
     joined = "\n---\n".join(t for t in texts if t)
     hits = rule_hits(joined)
-    template = await load_template(db, "guardrail_classify")
     built = build_messages(template, {"input": data_block("input", joined)})
     verdict, _ = await llm.complete_structured(
         LlmTier.LIGHT,
@@ -104,9 +109,12 @@ async def classify(texts: list[str], *, db: AsyncSession, llm: LlmClient) -> Gua
     return GuardrailResult(category, score, hits)
 
 
-async def check(texts: list[str], *, db: AsyncSession, llm: LlmClient) -> GuardrailResult:
-    """모든 LLM 호출 전에 거쳐야 하는 진입점 (CLAUDE.md §4.3). 차단 시 INPUT_REJECTED."""
-    result = await classify(texts, db=db, llm=llm)
+async def check(texts: list[str], *, template: LoadedTemplate, llm: LlmClient) -> GuardrailResult:
+    """모든 LLM 호출 전에 거쳐야 하는 진입점 (CLAUDE.md §4.3). 차단 시 INPUT_REJECTED.
+
+    DB 세션을 쓰지 않으므로 본 LLM 호출과 동시에 실행해도 안전하다(템플릿은 미리 읽는다).
+    """
+    result = await classify(texts, template=template, llm=llm)
     if result.blocked:
         # 원문 대신 유형·점수·해시만 남긴다.
         logger.warning(
@@ -118,7 +126,7 @@ async def check(texts: list[str], *, db: AsyncSession, llm: LlmClient) -> Guardr
                 "input_sha256": input_fingerprint("\n".join(texts)),
             },
         )
-        raise InputRejectedError(log_detail=result.category)
+        raise InputRejectedError(log_detail=result.category, details={})
     return result
 
 
