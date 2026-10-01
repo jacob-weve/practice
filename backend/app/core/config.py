@@ -1,0 +1,66 @@
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_env: Literal["local", "test", "staging", "production"] = "local"
+    app_version: str = "0.1.0"
+    api_prefix: str = "/api/v1"
+    default_locale: str = "ko"
+    supported_locales: list[str] = ["ko", "en", "ja"]
+
+    database_url: str = "postgresql+asyncpg://talksoft:talksoft@localhost:5432/talksoft"
+    redis_url: str = "redis://localhost:6379/0"
+
+    web_base_url: str = "http://localhost:3000"
+    cors_origins: list[str] = ["http://localhost:3000"]
+    # OAuth redirect_uri 화이트리스트. 인가 요청과 로그인 요청 모두 이 목록으로 검증한다.
+    oauth_redirect_uris: list[str] = Field(default_factory=list)
+
+    # 서비스 JWT (RS256). PEM 원문을 환경변수/Secrets Manager로 주입한다.
+    jwt_private_key: SecretStr = SecretStr("")
+    jwt_public_key: str = ""
+    jwt_key_id: str = "local-1"
+    jwt_issuer: str = "https://api.talksoft.app"
+    jwt_audience: str = "talksoft-app"
+    access_token_ttl_seconds: int = 900
+    refresh_token_ttl_seconds: int = 14 * 24 * 3600
+    refresh_reuse_grace_seconds: int = 5
+    refresh_cookie_name: str = "ts_rt"
+    refresh_cookie_path: str = "/api/v1/auth"
+    cookie_secure: bool = True
+
+    # 제공자 토큰 암호화용 AES-256-GCM 키 (base64, 32바이트). 운영에서는 KMS에서 주입한다.
+    data_encryption_key: SecretStr = SecretStr("")
+
+    oauth_state_ttl_seconds: int = 600
+    oauth_http_timeout_seconds: float = 5.0
+    jwks_cache_ttl_seconds: int = 3600
+
+    kakao_client_id: str = ""
+    kakao_client_secret: SecretStr = SecretStr("")
+    kakao_admin_key: SecretStr = SecretStr("")  # 탈퇴 시 unlink용
+    google_client_id: str = ""
+    google_client_secret: SecretStr = SecretStr("")
+    naver_client_id: str = ""
+    naver_client_secret: SecretStr = SecretStr("")
+    apple_client_id: str = ""  # Services ID (web)
+    apple_team_id: str = ""
+    apple_key_id: str = ""
+    apple_private_key: SecretStr = SecretStr("")  # .p8 PEM 원문
+
+    consent_version: str = "2026-10-01"
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

@@ -1,0 +1,21 @@
+{
+  "VALIDATION_ERROR": "リクエストの形式が正しくありません。",
+  "NOT_FOUND": "リソースが見つかりません。",
+  "HTTP_ERROR": "リクエストを処理できません。",
+  "INTERNAL_ERROR": "一時的なエラーが発生しました。しばらくしてから再度お試しください。",
+  "RATE_LIMITED": "リクエストが多すぎます。しばらくしてから再度お試しください。",
+  "AUTH_UNSUPPORTED_PROVIDER": "サポートされていないログイン方法です。",
+  "AUTH_INVALID_REDIRECT_URI": "許可されていないリダイレクトURIです。",
+  "AUTH_INVALID_STATE": "ログインリクエストの有効期限が切れました。もう一度お試しください。",
+  "AUTH_PKCE_MISMATCH": "ログインリクエストを確認できません。もう一度お試しください。",
+  "AUTH_PROVIDER_DENIED": "ログインがキャンセルされたか、認証に失敗しました。",
+  "AUTH_ID_TOKEN_INVALID": "ログイン情報を確認できません。もう一度お試しください。",
+  "AUTH_TOKEN_EXPIRED": "セッションの有効期限が切れました。",
+  "AUTH_TOKEN_INVALID": "認証情報が正しくありません。",
+  "AUTH_REFRESH_INVALID": "もう一度ログインしてください。",
+  "AUTH_REFRESH_REUSED": "セキュリティのため、もう一度ログインしてください。",
+  "AUTH_PROVIDER_UNAVAILABLE": "ログインサービスが一時的に利用できません。しばらくしてから再度お試しください。",
+  "CONSENT_REQUIRED": "サービスをご利用いただくには必須規約への同意が必要です。",
+  "ACCOUNT_SUSPENDED": "このアカウントは利用停止されています。",
+  "ACCOUNT_LINK_CONFLICT": "このログイン情報は既に別のアカウントに連携されています。"
+}

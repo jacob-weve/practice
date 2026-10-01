@@ -1,0 +1,21 @@
+{
+  "VALIDATION_ERROR": "The request is invalid.",
+  "NOT_FOUND": "The requested resource was not found.",
+  "HTTP_ERROR": "The request could not be processed.",
+  "INTERNAL_ERROR": "Something went wrong. Please try again later.",
+  "RATE_LIMITED": "Too many requests. Please try again later.",
+  "AUTH_UNSUPPORTED_PROVIDER": "This login method is not supported.",
+  "AUTH_INVALID_REDIRECT_URI": "The redirect URI is not allowed.",
+  "AUTH_INVALID_STATE": "Your login request has expired. Please try again.",
+  "AUTH_PKCE_MISMATCH": "We couldn't verify your login request. Please try again.",
+  "AUTH_PROVIDER_DENIED": "Login was cancelled or authentication failed.",
+  "AUTH_ID_TOKEN_INVALID": "We couldn't verify your login. Please try again.",
+  "AUTH_TOKEN_EXPIRED": "Your session has expired.",
+  "AUTH_TOKEN_INVALID": "Invalid credentials.",
+  "AUTH_REFRESH_INVALID": "Please log in again.",
+  "AUTH_REFRESH_REUSED": "For your security, please log in again.",
+  "AUTH_PROVIDER_UNAVAILABLE": "The login provider is temporarily unavailable. Please try again later.",
+  "CONSENT_REQUIRED": "Please agree to the required terms to continue.",
+  "ACCOUNT_SUSPENDED": "This account has been suspended.",
+  "ACCOUNT_LINK_CONFLICT": "This login is already linked to another account."
+}
