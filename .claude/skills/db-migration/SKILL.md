@@ -35,6 +35,9 @@ DATABASE_URL="sqlite+aiosqlite:///$SCR/gen.db" uv run alembic revision --autogen
   for enum_name in ("new_enum",):
       sa.Enum(name=enum_name).drop(bind, checkfirst=True)
   ```
+- **같은 enum을 여러 테이블에서 쓰면** PostgreSQL에서 `CREATE TYPE`이 중복 실행돼 실패한다. 첫 테이블만 `sa.Enum(...)`을 두고, 나머지는
+  `sa.Enum(..., name='x').with_variant(postgresql.ENUM(..., name='x', create_type=False), 'postgresql')`로 바꾼다 (예: `0002`의 `llm_tier`).
+  오프라인 SQL에서 `CREATE TYPE x`가 한 번만 나오는지 확인한다.
 - 데이터 변환이 필요한 변경(컬럼 타입 변경, NOT NULL 추가)은 autogenerate가 처리하지 않으므로 직접 작성한다.
 
 ## 4. 검증
