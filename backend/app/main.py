@@ -17,6 +17,7 @@ from app.core.middleware import RequestIdMiddleware
 from app.db.session import create_engine, create_sessionmaker
 from app.llm.client import AnthropicProvider, CircuitBreaker, LlmClient, LlmProvider
 from app.privacy.log_writer import TransformationLogWriter
+from app.reply.router import router as reply_router
 from app.tone.router import router as tone_router
 from app.users.router import router as users_router
 
@@ -86,6 +87,7 @@ def create_app(
     api.include_router(auth_router)
     api.include_router(users_router)
     api.include_router(tone_router)
+    api.include_router(reply_router)
     app.include_router(api)
     return app
 

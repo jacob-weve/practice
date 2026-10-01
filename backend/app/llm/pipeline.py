@@ -12,8 +12,15 @@ from collections.abc import AsyncIterator, Coroutine
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.core.errors import LlmUpstreamError
-from app.db.models import LlmTier
+from pydantic import ValidationError
+
+from app.core.errors import (
+    InputRejectedError,
+    LlmOutputInvalidError,
+    LlmRefusedError,
+    LlmUpstreamError,
+)
+from app.db.models import LlmTier, LogStatus
 from app.llm.client import LlmCall, LlmClient, StreamDone, TextDelta, check_stop_reason
 from app.llm.guardrails import GuardrailResult
 
@@ -72,3 +79,14 @@ async def guarded_stream(
     if stats.done is None:
         raise LlmUpstreamError(log_detail="no_final_message")
     check_stop_reason(stats.done)
+
+
+def status_for(exc: Exception) -> LogStatus:
+    """예외를 transformation_logs.status로 바꾼다."""
+    if isinstance(exc, InputRejectedError):
+        return LogStatus.GUARDRAIL_BLOCKED
+    if isinstance(exc, LlmRefusedError):
+        return LogStatus.REFUSED
+    if isinstance(exc, LlmOutputInvalidError | ValidationError):
+        return LogStatus.SCHEMA_INVALID
+    return LogStatus.LLM_ERROR

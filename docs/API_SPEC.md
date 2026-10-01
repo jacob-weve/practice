@@ -557,6 +557,10 @@ event: done
 data: {"usage":{"input_tokens":812,"output_tokens":540,"cached_tokens":600},"latency_ms":3820}
 ```
 - 스트림 중 에러가 나면 `event: error` / `data: ErrorResponse.error` 후 연결을 종료한다.
+- 가드레일 분류는 본 호출과 동시에 실행되며, 통과하기 전에는 `meta` 외의 이벤트를 보내지 않는다. 차단되면 `meta` 다음에 바로 `error`(`INPUT_REJECTED`)가 온다.
+- `red_flags[].start/end`는 모델이 아니라 서버가 초안에서 `text`를 찾아 계산한다(UTF-16 code unit, JavaScript `String.slice`와 같은 기준). 초안에서 찾지 못한 항목은 빠진다.
+- 부적절한 표현이 들어간 variant는 빠질 수 있다(이벤트의 `index`는 모델 출력 기준이라 건너뛸 수 있음).
+- 입력 한도: `context` 2,000자, `draft` 1,000자(정규화 후). 넘으면 `413 INPUT_TOO_LONG`.
 - 스트림 시작 전 검증 오류(4xx)는 일반 JSON 에러 응답으로 반환한다.
 
 **에러**: `VALIDATION_ERROR`, `INPUT_TOO_LONG`, `INPUT_REJECTED`, `CONSENT_REQUIRED`, `RATE_LIMITED`, `LLM_UPSTREAM_ERROR`, `LLM_OUTPUT_INVALID`
@@ -710,7 +714,9 @@ data: {"usage":{"input_tokens":812,"output_tokens":540,"cached_tokens":600},"lat
   "disclaimer": "AI 해석은 참고용이에요. 정확한 마음은 상대방과 직접 대화해서 확인해 주세요."
 }
 ```
-- SSE 지원: 이벤트 `meta` → `interpretation`(×N) → `guide` → `reply`(×3) → `done`.
+- SSE 지원: 이벤트 `meta` → `analysis`(`message_emotion`) → `interpretation`(×N, `index` 포함) → `guide` → `reply`(×3, `index` 포함) → `done`(`disclaimer`, `usage`, `latency_ms`).
+- 한도: `/tone/transform`과 같은 사용자별 한도를 공유한다.
+- 입력 한도: `message` 1,000자, `conversation` 20턴·턴당 500자·총 3,000자. 넘으면 `413 INPUT_TOO_LONG`.
 - **안전 정책**: 상대를 조종·감시·비하하는 답장은 생성하지 않는다.
 
 ---

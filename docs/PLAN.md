@@ -107,40 +107,45 @@
 
 ## Step 4. Guardrail & 프라이버시 레이어
 
-- [ ] 입력 정규화: NFC, 제로폭/제어문자 제거, 길이 상한
-- [ ] 규칙 기반 인젝션 탐지(다국어 시그니처, 구분 태그 위조) → 위험 점수
-- [ ] 경량 모델 분류기(`safe / injection / jailbreak / harmful`) + 임계값 설정
-- [ ] 프롬프트 조립기: `system`/`user` 분리, 데이터 블록 이스케이프
-- [ ] 카나리아 토큰으로 시스템 프롬프트 유출 탐지
-- [ ] 출력 안전 필터(욕설·혐오·조종성 표현 variant 제외)
-- [ ] `privacy/pii.py`: 정규식(전화, 이메일, 주민번호, 카드, 계좌) + 인명 마스킹, 토큰 치환/복원
-- [ ] 로깅 미들웨어와 Sentry에서 바디·`Authorization`·`Cookie` 스크러빙
-- [ ] Rate Limit(Redis token bucket), `X-RateLimit-*` 헤더
-- [ ] **레드팀 테스트셋** 50건 이상(인젝션/탈옥/유해 요청)으로 차단율 측정, 정상 입력 오탐률 ≤ 2% 확인
+- [x] 입력 정규화: NFC, 제로폭/제어문자 제거, 길이 상한
+- [x] 규칙 기반 인젝션 탐지(다국어 시그니처, 구분 태그 위조) → 위험 점수
+- [x] 경량 모델 분류기(`safe / injection / jailbreak / harmful`) + 임계값 0.7 — 본 호출과 동시에 실행하고 통과 전까지 출력 보류
+- [x] 프롬프트 조립기: `system`/`user` 분리, 데이터 블록 이스케이프
+- [x] 카나리아 토큰으로 시스템 프롬프트 유출 탐지 (`LLM_CANARY_TOKEN`)
+- [x] 출력 안전 필터(욕설 사전 기반 variant/추천 답장 제외)
+- [ ] 조종성·혐오 표현 필터 고도화(현재는 욕설 단어 목록만)
+- [x] `privacy/pii.py`: 정규식(전화, 이메일, 주민번호, 카드, 계좌, 주소) + 호칭 기반 인명 마스킹, 토큰 치환/복원
+- [ ] 인명 NER 도입 검토(현재는 '씨/님/직함' 패턴만)
+- [x] 구조화 로그 스크러빙(바디 미기록, 토큰·이메일·원문 키 마스킹)
+- [ ] Sentry 연동 및 `before_send` 스크러빙
+- [x] Rate Limit(Redis 고정 윈도우, 분·일 단위), `X-RateLimit-*` 헤더
+- [x] **레드팀 테스트셋** 50건(인젝션 25·탈옥 10·유해 15) + 정상 30건. 규칙 레이어: 오탐 0건, 공격 탐지 ≥ 80%
+- [ ] 실제 분류 모델로 차단율 ≥ 95%·오탐률 ≤ 2% 측정 (`TALKSOFT_LIVE_LLM=1 uv run pytest tests/redteam -m live`, API 키 필요)
 
 ---
 
 ## Step 5. 말투 변환 & 감정 분석 API
 
-- [ ] `GET /tone/options` (로케일별)
-- [ ] `POST /tone/transform` JSON 응답 구현
-- [ ] SSE 스트리밍: 증분 JSON 파서, `meta → analysis → red_flags → variant×3 → done` 이벤트
-- [ ] 클라이언트 연결 종료 감지 시 LLM 스트림 취소
-- [ ] keep-alive 주석(15초), `X-Accel-Buffering: no`
-- [ ] 출력 검증: 스키마, red_flag 오프셋 보정, 온도 범위
-- [ ] `POST /tone/analyze` (Light 티어)
-- [ ] Opt-in 시 마스킹 로그 BackgroundTask 적재, 미동의 시 메트릭만 적재
-- [ ] 골든셋 30건(페르소나 × 관계 × 언어)으로 의도 보존율·자연스러움 수동 평가
+- [x] `GET /tone/options` (로케일별)
+- [x] `POST /tone/transform` JSON 응답 구현
+- [x] SSE 스트리밍: 증분 JSON 파서, `meta → analysis → red_flags → variant×3 → done` 이벤트
+- [x] 클라이언트 연결 종료 감지 시 LLM 스트림 취소
+- [x] keep-alive 주석(15초), `X-Accel-Buffering: no`
+- [x] 출력 검증: 조각별·최종 스키마, red_flag 오프셋은 서버가 계산(UTF-16), 온도 범위
+- [x] `POST /tone/analyze` (Light 티어)
+- [x] Opt-in 시 마스킹 로그 적재, 미동의 시 메트릭만 적재 (스트림 종료 후 기록)
+- [ ] 골든셋 30건(페르소나 × 관계 × 언어)으로 의도 보존율·자연스러움 수동 평가 (실제 API 필요)
 
 ---
 
 ## Step 6. 답장 심리 해석기 API
 
-- [ ] `POST /reply/interpret` 프롬프트 v1 (단정 금지, 확률·근거 제시, 조종성 답장 금지)
-- [ ] JSON 응답 및 SSE(`interpretation → guide → reply×3 → done`)
-- [ ] 대화 맥락 길이 제한(20턴, 3,000자) 및 화자 구분 데이터 블록화
-- [ ] `disclaimer` i18n 적용
-- [ ] 안전 시나리오 테스트(집착·감시·가스라이팅 유도 요청 거절)
+- [x] `POST /reply/interpret` 프롬프트 v1 (단정 금지, 확률·근거 제시, 조종성 답장 금지)
+- [x] JSON 응답 및 SSE(`analysis → interpretation×N → guide → reply×3 → done`)
+- [x] 대화 맥락 길이 제한(20턴, 턴당 500자, 총 3,000자) 및 화자 구분 데이터 블록화
+- [x] `disclaimer` i18n 적용
+- [x] 안전 장치 테스트: 가드레일이 모든 턴을 검사, 턴 태그 위조 차단, 부적절한 추천 답장 제외
+- [ ] 실제 모델로 집착·감시·가스라이팅 유도 요청 거절 확인 (레드팀 HARMFUL 셋 활용)
 
 ---
 

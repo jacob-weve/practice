@@ -11,16 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.errors import (
     AppError,
-    InputRejectedError,
     InputTooLongError,
     LlmOutputInvalidError,
-    LlmRefusedError,
     ValidationAppError,
 )
 from app.db.models import LlmTier, LogStatus, ToneOption, TransformKind, User
 from app.llm import guardrails
 from app.llm.client import LlmCall, LlmClient
-from app.llm.pipeline import StreamStats, guarded_stream
+from app.llm.pipeline import StreamStats, guarded_stream, status_for
 from app.llm.prompts import (
     LoadedTemplate,
     build_messages,
@@ -60,16 +58,6 @@ LANGUAGES = ["ko", "en", "ja"]
 RED_FLAGS = TypeAdapter(list[RedFlag])
 
 SseEvent = tuple[str, dict[str, Any]]
-
-
-def status_for(exc: Exception) -> LogStatus:
-    if isinstance(exc, InputRejectedError):
-        return LogStatus.GUARDRAIL_BLOCKED
-    if isinstance(exc, LlmRefusedError):
-        return LogStatus.REFUSED
-    if isinstance(exc, LlmOutputInvalidError | ValidationError):
-        return LogStatus.SCHEMA_INVALID
-    return LogStatus.LLM_ERROR
 
 
 @dataclass
