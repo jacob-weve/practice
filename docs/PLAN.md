@@ -173,7 +173,7 @@
 - [x] `locales/{ko,en,ja}/{common,auth,errors,nav,tone,interpret,history,settings}.json` 구성 (백엔드·웹 에러 카탈로그 동기화 테스트 포함)
 - [x] 백엔드 `Accept-Language` 협상과 에러 메시지 번역 (SSE `error` 이벤트 포함)
 - [x] UI 언어와 변환 출력 언어 분리 설정
-- [ ] 언어별 존댓말 매핑(`ko: haeyo/hapsyo/banmal`, `ja`, `en`) 프롬프트 반영
+- [x] 언어별 존댓말 매핑(`app/tone/formality.py`: ko 하십시오체/해요체/반말, ja 敬語/丁寧語/タメ口, en formal/neutral/casual, `auto`면 관계로 결정) 프롬프트 반영
 - [ ] 교차 언어 변환 골든셋(en→ko, ko→ja 등) 10건 평가
 - [ ] 하드코딩 문자열 검출 lint 규칙 적용
 
@@ -181,18 +181,22 @@
 
 ## Step 9. 품질·보안 점검
 
-- [ ] 테스트 커버리지 backend ≥ 80% (auth·guardrail·pii는 ≥ 90%)
-- [ ] OWASP ASVS L1 체크리스트 자가 점검(인증, 세션, 입력 검증)
-- [ ] 의존성 취약점 스캔, 비밀값 유출 스캔 통과
-- [ ] 부하 테스트(k6): 동시 SSE 200 연결, TTFT p95 ≤ 1.5초 확인
-- [ ] 비용 측정: 요청당 평균 비용 ≤ $0.004, 티어 분포 확인
-- [ ] 개인정보 처리방침·이용약관 초안(수집 항목, 국외 이전, 보관 기간) 작성 및 법무 검토 요청
+- [x] 테스트 커버리지 backend 95% (auth/service 93%, guardrails 97%, privacy 100%) — greenlet 추적 설정으로 정확히 측정
+- [x] OWASP ASVS L1 자가 점검 → [SECURITY_CHECKLIST.md](./SECURITY_CHECKLIST.md) (남은 조치: 실모델 레드팀 측정, CSP, 인프라 TLS, 침투 테스트)
+- [x] 의존성 취약점 스캔 0건(pip-audit, pnpm audit — next-intl 4.x 업그레이드, postcss override), 비밀값 스캔은 CI(gitleaks)
+- [ ] gitleaks를 로컬에서 한 번 실행 (이 환경에 미설치)
+- [ ] 부하 테스트(k6): 동시 SSE 200 연결, TTFT p95 ≤ 1.5초 확인 (실제 인프라·API 키 필요)
+- [ ] 비용 측정: 요청당 평균 비용 ≤ $0.004, 티어 분포 확인 (`transformation_logs`의 토큰 수로 집계 가능, 실제 트래픽 필요)
+- [x] 개인정보 처리방침 초안 → [PRIVACY_POLICY_DRAFT.md](./PRIVACY_POLICY_DRAFT.md) (구현 대조표 포함)
+- [ ] 이용약관 초안, 법무 검토 요청
 
 ---
 
 ## Step 10. 1차 프로토타입 완성
 
-- [ ] staging 배포(Docker 이미지, 환경변수/비밀값 주입)
+- [x] 배포 산출물: `backend/Dockerfile`, `web/Dockerfile`(Next standalone), `infra/docker-compose.yml`(postgres·redis·backend·web), 주기 작업 `python -m app.jobs purge-logs|revoke-queue`
+- [ ] Docker 이미지 실제 빌드·기동 확인 (이 환경은 Docker 데몬·compose 플러그인 없음. web standalone 서버는 로컬에서 기동 확인)
+- [ ] staging 배포(환경변수/비밀값 주입)
 - [ ] 4개 제공자 staging Redirect URI 등록 및 실기기 로그인 확인
 - [ ] 대시보드: 지연(TTFT), 토큰 비용, Guardrail 차단율, 파싱 실패율, 로그인 성공률
 - [ ] 알림 규칙 설정(파싱 실패 > 2%, TTFT p95 > 3초, 로그인 실패 > 5%)

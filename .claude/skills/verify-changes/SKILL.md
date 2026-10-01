@@ -14,6 +14,8 @@ export PATH=~/.local/bin:~/.npm-global/bin:$PATH
 unset VIRTUAL_ENV   # 루트 .venv(Python 3.9)가 uv 프로젝트 환경을 가리지 않게
 ```
 
+- 셸이 zsh다. 반복문 변수로 `path`를 쓰지 않는다(zsh에서 `PATH`와 연결돼 명령을 못 찾게 된다).
+
 ## Backend (`backend/`)
 
 ```bash
@@ -21,6 +23,9 @@ cd backend
 uv run ruff check --fix . && uv run ruff format .
 uv run mypy app
 uv run pytest --cov --cov-report=term
+
+# 의존성 취약점 (uvx pip-audit만 실행하면 uvx 자신의 환경을 검사하므로 의미 없다)
+uv export --format requirements-txt --no-emit-project > "$SCR/req.txt" && uvx pip-audit -r "$SCR/req.txt" --disable-pip
 ```
 
 - ruff `S105`가 URL·알고리즘 이름 같은 상수에 오탐하면 해당 줄에만 `# noqa: S105`를 단다. 규칙을 전역으로 끄지 않는다.
@@ -34,6 +39,7 @@ cd web
 pnpm gen:api            # 백엔드 API가 바뀌었으면 타입을 다시 만든다(lib/api/schema.d.ts)
 pnpm format && pnpm typecheck && pnpm lint && pnpm test
 NEXT_TELEMETRY_DISABLED=1 pnpm build   # 라우트·서버 컴포넌트 오류는 build에서만 드러난다
+pnpm audit --prod
 ```
 
 ## 완료 기준
