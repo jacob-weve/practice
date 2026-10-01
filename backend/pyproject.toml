@@ -70,3 +70,5 @@ markers = ["live: calls the real LLM API (opt-in, costs money)"]
 
 [tool.coverage.run]
 source = ["app"]
+# SQLAlchemy async는 greenlet으로 실행 흐름을 바꾸므로 함께 추적해야 커버리지가 정확하다.
+concurrency = ["greenlet", "thread"]

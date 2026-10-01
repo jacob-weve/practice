@@ -289,3 +289,139 @@ async def test_logs_never_contain_tokens_or_emails(
         "auth-code",
     ):
         assert secret not in output
+
+
+# ------------------------------------------------------ security branches
+async def test_suspended_user_cannot_log_in(
+    client: httpx.AsyncClient,
+    mock_http: respx.MockRouter,
+    idps: dict[str, FakeIdP],
+    db: AsyncSession,
+) -> None:
+    from sqlalchemy import update
+
+    from app.db.models import UserStatus
+
+    await mobile_login(client, mock_http, idps["google"], sub="bad-actor")
+    await db.execute(update(User).values(status=UserStatus.SUSPENDED))
+    await db.commit()
+    res = await oidc_login(client, mock_http, idps["google"], "google", GOOGLE_TOKEN, "bad-actor")
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "ACCOUNT_SUSPENDED"
+
+
+async def test_redirect_uri_must_match_the_authorize_request(
+    client: httpx.AsyncClient,
+) -> None:
+    from tests.conftest import REDIRECTS
+    from tests.fakes import new_verifier, start_authorization
+
+    verifier = new_verifier()
+    state, _ = await start_authorization(client, "google", REDIRECTS["google"], verifier)
+    res = await client.post(
+        "/api/v1/auth/login/google",
+        json={
+            "code": "c",
+            "state": state,
+            "code_verifier": verifier,
+            "redirect_uri": REDIRECTS["kakao"],  # 화이트리스트에는 있지만 인가 때와 다름
+        },
+    )
+    assert res.json()["error"]["code"] == "AUTH_INVALID_STATE"
+
+
+async def test_handoff_is_apple_only(client: httpx.AsyncClient) -> None:
+    from tests.conftest import REDIRECTS
+    from tests.fakes import new_verifier
+
+    res = await client.post(
+        "/api/v1/auth/login/google",
+        json={
+            "handoff": "h" * 32,
+            "code_verifier": new_verifier(),
+            "redirect_uri": REDIRECTS["google"],
+        },
+    )
+    assert res.json()["error"]["code"] == "AUTH_INVALID_STATE"
+
+
+async def test_apple_consent_revoked_keeps_user_with_other_accounts(
+    client: httpx.AsyncClient,
+    mock_http: respx.MockRouter,
+    idps: dict[str, FakeIdP],
+    db: AsyncSession,
+) -> None:
+    from tests.conftest import REDIRECTS
+    from tests.fakes import new_verifier, start_authorization
+
+    login = await apple_web_login(client, mock_http, idps["apple"], "apple-multi")
+    access = login.json()["access_token"]
+    verifier = new_verifier()
+    state, nonce = await start_authorization(client, "kakao", REDIRECTS["kakao"], verifier)
+    mock_http.post(KAKAO_TOKEN).respond(json={"id_token": idps["kakao"].id_token("k-m", nonce)})
+    linked = await client.post(
+        "/api/v1/auth/link/kakao",
+        json={
+            "code": "c",
+            "state": state,
+            "code_verifier": verifier,
+            "redirect_uri": REDIRECTS["kakao"],
+        },
+        headers={"Authorization": f"Bearer {access}"},
+    )
+    assert linked.json()["user"]["linked_providers"] == ["apple", "kakao"]
+
+    events = json.dumps({"type": "consent-revoked", "sub": "apple-multi"})
+    payload = idps["apple"].id_token("x", None, events=events, sub=None, exp=None)
+    await client.post("/api/v1/auth/apple/notifications", json={"payload": payload})
+
+    providers = (await db.execute(select(SocialAccount.social_provider))).scalars().all()
+    assert [p.value for p in providers] == ["kakao"]
+    assert await db.scalar(select(func.count()).select_from(User)) == 1
+    active = await db.scalar(
+        select(func.count()).select_from(RefreshToken).where(RefreshToken.revoked_at.is_(None))
+    )
+    assert active == 0  # 애플 연결이 끊기면 기존 세션은 모두 폐기
+
+
+async def test_linking_a_second_account_of_same_provider_conflicts(
+    client: httpx.AsyncClient, mock_http: respx.MockRouter, idps: dict[str, FakeIdP]
+) -> None:
+    from tests.conftest import REDIRECTS
+    from tests.fakes import new_verifier, start_authorization
+
+    owner = await mobile_login(client, mock_http, idps["google"], sub="g-owner")
+    verifier = new_verifier()
+    state, nonce = await start_authorization(client, "google", REDIRECTS["google"], verifier)
+    mock_http.post(GOOGLE_TOKEN).respond(
+        json={"id_token": idps["google"].id_token("g-other", nonce)}
+    )
+    res = await client.post(
+        "/api/v1/auth/link/google",
+        json={
+            "code": "c",
+            "state": state,
+            "code_verifier": verifier,
+            "redirect_uri": REDIRECTS["google"],
+        },
+        headers={"Authorization": f"Bearer {owner['access_token']}"},
+    )
+    assert res.status_code == 409
+
+
+async def test_returning_user_gets_email_and_name_filled_in(
+    client: httpx.AsyncClient, mock_http: respx.MockRouter, idps: dict[str, FakeIdP]
+) -> None:
+    first = await oidc_login(client, mock_http, idps["kakao"], "kakao", KAKAO_TOKEN, "k-late")
+    assert first.json()["user"]["email"] is None
+    again = await oidc_login(
+        client,
+        mock_http,
+        idps["kakao"],
+        "kakao",
+        KAKAO_TOKEN,
+        "k-late",
+        claims={"email": "late@example.com", "nickname": "늦은동의"},
+    )
+    assert again.json()["user"]["email"] == "late@example.com"
+    assert again.json()["user"]["display_name"] == "늦은동의"

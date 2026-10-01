@@ -25,3 +25,8 @@ async def test_not_found_uses_error_envelope_and_locale(client: httpx.AsyncClien
     assert body["code"] == "NOT_FOUND"
     assert body["message"] == "The requested resource was not found."
     assert body["request_id"] == res.headers["x-request-id"]
+
+
+async def test_api_responses_are_not_cacheable(client: httpx.AsyncClient) -> None:
+    res = await client.get("/api/v1/health")
+    assert res.headers["cache-control"] == "no-store"
