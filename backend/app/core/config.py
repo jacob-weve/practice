@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     llm_max_concurrency: dict[str, int] = {"light": 50, "heavy": 20}
     llm_circuit_failure_threshold: int = 3
     llm_circuit_open_seconds: float = 30.0
+    # 시스템 프롬프트 유출 탐지용. 배포마다 바꾸고 비밀로 관리한다.
+    llm_canary_token: SecretStr = SecretStr("")
 
     @property
     def is_production(self) -> bool:
